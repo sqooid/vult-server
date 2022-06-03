@@ -9,9 +9,10 @@ fn index() -> &'static str {
 }
 
 #[rocket::main]
-async fn main() -> Result<(), rocket::Error> {
-    config::parse_config()
-    let _rocket = rocket::build().mount("/", routes![index]).launch().await?;
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = config::parse_config::read_config("config.toml")?;
+    println!("{:?}", &config);
+    // let _rocket = rocket::build().mount("/", routes![index]).launch().await?;
 
     Ok(())
 }
