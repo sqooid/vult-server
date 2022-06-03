@@ -4,9 +4,9 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    users: Vec<User>,
+    pub users: Vec<User>,
     #[serde(default = "default_cache_count")]
-    cache_count: u32,
+    pub cache_count: u32,
 }
 
 fn default_cache_count() -> u32 {
@@ -15,8 +15,8 @@ fn default_cache_count() -> u32 {
 
 #[derive(Debug, Deserialize)]
 pub struct User {
-    alias: Option<String>,
-    key: String,
+    pub alias: Option<String>,
+    pub key: String,
 }
 
 pub fn read_config<T: AsRef<Path>>(path: T) -> Result<Config, Box<dyn std::error::Error>> {

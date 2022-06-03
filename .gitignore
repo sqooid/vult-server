@@ -1,1 +1,5 @@
 /target
+
+# Include example config
+example/*
+!example/config.toml
