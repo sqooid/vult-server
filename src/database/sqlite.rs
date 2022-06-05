@@ -5,7 +5,7 @@ use std::{
 
 use crate::util::types::GenericResult;
 
-use super::traits::{VultCacheDatabase, VultStoreDatabase};
+use super::traits::{CacheDatabase, StoreDatabase};
 
 pub struct SqliteDatabase {
     directory: PathBuf,
@@ -19,7 +19,7 @@ impl SqliteDatabase {
     }
 }
 
-impl VultStoreDatabase for SqliteDatabase {
+impl StoreDatabase for SqliteDatabase {
     fn create_user_store(&self, key: &str) -> GenericResult {
         let mut path: PathBuf = self.directory.clone();
         fs::create_dir_all(&path)?;
@@ -35,7 +35,7 @@ impl VultStoreDatabase for SqliteDatabase {
     }
 }
 
-impl VultCacheDatabase for SqliteDatabase {
+impl CacheDatabase for SqliteDatabase {
     fn create_user_cache(&self, key: &str) -> GenericResult {
         let mut path: PathBuf = self.directory.clone();
         fs::create_dir_all(&path)?;
