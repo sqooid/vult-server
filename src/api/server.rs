@@ -1,8 +1,11 @@
-use crate::{config::parse_config::Config, util::types::GenericResult};
+use crate::{
+    config::parse_config::Config, database::sqlite::SqliteDatabase, util::types::GenericResult,
+};
 use std::fs;
 
 pub async fn launch_server(config: Config) -> GenericResult {
     let _rocket = rocket::build()
+        .manage(SqliteDatabase::new(&config.db_directory))
         .manage(config)
         .mount("/", routes![])
         .launch()

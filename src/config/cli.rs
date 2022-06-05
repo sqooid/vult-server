@@ -16,4 +16,6 @@ pub struct Cli {
 pub enum Commands {
     /// Run the server
     Run,
+    /// Testing
+    Test,
 }

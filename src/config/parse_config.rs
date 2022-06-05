@@ -7,10 +7,16 @@ pub struct Config {
     pub users: Vec<User>,
     #[serde(default = "default_cache_count")]
     pub cache_count: u32,
+    #[serde(default = "default_db_directory")]
+    pub db_directory: String,
 }
 
 fn default_cache_count() -> u32 {
     100
+}
+
+fn default_db_directory() -> String {
+    String::from("./data")
 }
 
 #[derive(Debug, Deserialize)]
