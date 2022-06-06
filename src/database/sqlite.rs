@@ -16,18 +16,22 @@ impl SqliteDatabase {
     }
 }
 
+fn get_db_path(key: &str) -> String {
+    format!("{}.sqlite", key)
+}
+
 impl StoreDatabase for SqliteDatabase {
     fn create_user_store(&self, key: &str) -> GenericResult {
         let mut path: PathBuf = self.directory.clone();
         fs::create_dir_all(&path)?;
-        path.push(format!("{}.store.sqlite", key));
+        path.push(get_db_path(key));
         let _db = sqlite::open(&path)?;
         Ok(())
     }
 
     fn has_user_store(&self, key: &str) -> bool {
         let mut path: PathBuf = self.directory.clone();
-        path.push(format!("{}.store.sqlite", key));
+        path.push(get_db_path(key));
         path.exists()
     }
 }
@@ -36,14 +40,14 @@ impl CacheDatabase for SqliteDatabase {
     fn create_user_cache(&self, key: &str) -> GenericResult {
         let mut path: PathBuf = self.directory.clone();
         fs::create_dir_all(&path)?;
-        path.push(format!("{}.cache.sqlite", key));
+        path.push(get_db_path(key));
         let _db = sqlite::open(&path)?;
         Ok(())
     }
 
     fn has_user_cache(&self, key: &str) -> bool {
         let mut path: PathBuf = self.directory.clone();
-        path.push(format!("{}.cache.sqlite", key));
+        path.push(get_db_path(key));
         path.exists()
     }
 }
