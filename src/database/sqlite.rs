@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::PathBuf};
 
 use crate::util::types::GenericResult;
 
@@ -23,14 +20,14 @@ impl StoreDatabase for SqliteDatabase {
     fn create_user_store(&self, key: &str) -> GenericResult {
         let mut path: PathBuf = self.directory.clone();
         fs::create_dir_all(&path)?;
-        path.push(format!("{}.db.sqlite", key));
+        path.push(format!("{}.store.sqlite", key));
         let _db = sqlite::open(&path)?;
         Ok(())
     }
 
     fn has_user_store(&self, key: &str) -> bool {
         let mut path: PathBuf = self.directory.clone();
-        path.push(format!("{}.db.sqlite", key));
+        path.push(format!("{}.store.sqlite", key));
         path.exists()
     }
 }
@@ -39,14 +36,14 @@ impl CacheDatabase for SqliteDatabase {
     fn create_user_cache(&self, key: &str) -> GenericResult {
         let mut path: PathBuf = self.directory.clone();
         fs::create_dir_all(&path)?;
-        path.push(format!("{}.cc.sqlite", key));
+        path.push(format!("{}.cache.sqlite", key));
         let _db = sqlite::open(&path)?;
         Ok(())
     }
 
     fn has_user_cache(&self, key: &str) -> bool {
         let mut path: PathBuf = self.directory.clone();
-        path.push(format!("{}.cc.sqlite", key));
+        path.push(format!("{}.cache.sqlite", key));
         path.exists()
     }
 }
