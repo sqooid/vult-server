@@ -8,46 +8,40 @@ pub struct SqliteDatabase {
     directory: PathBuf,
 }
 
+fn get_db_path(key: &str) -> String {
+    format!("{}.sqlite", key)
+}
+
 impl SqliteDatabase {
     pub fn new<D: Into<PathBuf>>(directory: D) -> Self {
         Self {
             directory: directory.into(),
         }
     }
-}
 
-fn get_db_path(key: &str) -> String {
-    format!("{}.sqlite", key)
-}
-
-impl StoreDatabase for SqliteDatabase {
-    fn create_user_store(&self, key: &str) -> GenericResult {
+    fn open_db(&self, key: &str) -> GenericResult<sqlite::Connection> {
         let mut path: PathBuf = self.directory.clone();
-        fs::create_dir_all(&path)?;
+        if !path.exists() {
+            fs::create_dir_all(&path)?;
+        }
         path.push(get_db_path(key));
-        let _db = sqlite::open(&path)?;
-        Ok(())
+        let db = sqlite::open(&path)?;
+        Ok(db)
     }
 
-    fn has_user_store(&self, key: &str) -> bool {
-        let mut path: PathBuf = self.directory.clone();
-        path.push(get_db_path(key));
-        path.exists()
+    fn open_store(&self, key: &str) -> GenericResult<sqlite::Connection> {
+        let db = self.open_db(key)?;
+        db.execute("create table if not exists Store ()")?;
+        Ok(db)
+    }
+
+    fn open_cache(&self, key: &str) -> GenericResult<sqlite::Connection> {
+        let db = self.open_db(key)?;
+        db.execute("create table if not exists Cache ()")?;
+        Ok(db)
     }
 }
 
-impl CacheDatabase for SqliteDatabase {
-    fn create_user_cache(&self, key: &str) -> GenericResult {
-        let mut path: PathBuf = self.directory.clone();
-        fs::create_dir_all(&path)?;
-        path.push(get_db_path(key));
-        let _db = sqlite::open(&path)?;
-        Ok(())
-    }
+impl StoreDatabase for SqliteDatabase {}
 
-    fn has_user_cache(&self, key: &str) -> bool {
-        let mut path: PathBuf = self.directory.clone();
-        path.push(get_db_path(key));
-        path.exists()
-    }
-}
+impl CacheDatabase for SqliteDatabase {}

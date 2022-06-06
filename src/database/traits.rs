@@ -1,14 +1,6 @@
-use crate::util::types::GenericResult;
+pub trait StoreDatabase {}
 
-pub trait StoreDatabase {
-    fn create_user_store(&self, key: &str) -> GenericResult;
-    fn has_user_store(&self, key: &str) -> bool;
-}
-
-pub trait CacheDatabase {
-    fn create_user_cache(&self, key: &str) -> GenericResult;
-    fn has_user_cache(&self, key: &str) -> bool;
-}
+pub trait CacheDatabase {}
 
 pub struct Databases {
     store: Box<dyn StoreDatabase + Send + Sync>,

@@ -5,7 +5,7 @@ use crate::{
 };
 use std::fs;
 
-pub async fn launch_server(config: Config) -> GenericResult {
+pub async fn launch_server(config: Config) -> GenericResult<()> {
     let sqlite_store = SqliteDatabase::new(&config.db_directory);
     let sqlite_cache = SqliteDatabase::new(&config.db_directory);
     let _rocket = rocket::build()
@@ -20,7 +20,7 @@ pub async fn launch_server(config: Config) -> GenericResult {
     Ok(())
 }
 
-pub fn prepare_server(config: &Config) -> GenericResult {
+pub fn prepare_server(config: &Config) -> GenericResult<()> {
     fs::create_dir_all("data")?;
     for user in &config.users {
         sqlite::open(format!("data/{}", &user.key))?;
