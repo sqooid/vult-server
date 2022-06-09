@@ -5,7 +5,7 @@ use crate::{
 };
 use std::fs;
 
-pub async fn launch_server(config: Config) -> GenericResult<()> {
+pub async fn launch_server(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let sqlite_store = SqliteDatabase::new(&config.db_directory);
     let sqlite_cache = SqliteDatabase::new(&config.db_directory);
     let _rocket = rocket::build()

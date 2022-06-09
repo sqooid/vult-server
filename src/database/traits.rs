@@ -3,11 +3,11 @@ use crate::{
     util::types::GenericResult,
 };
 
-use super::error::DbError;
+use crate::util::error::Error;
 
 pub trait StoreDatabase {
     /// Apply a mutation to the store of the user of `key`
-    fn apply_mutation(&self, key: &str, mutation: Mutation) -> Result<(), DbError>;
+    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> Result<(), Error>;
 
     /// Export the entire store of the user of `key` as a list of credentials
     fn export_all(&self, key: &str) -> Vec<Credential>;
@@ -18,13 +18,12 @@ pub trait CacheDatabase {
     ///
     /// Returns the `id` of the newly cached state
     /// which can be used to sync efficiently
-    fn add_mutation(&self, key: &str, mutation: Mutation) -> GenericResult<String>;
+    fn add_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<String>;
 
     /// Get all mutations necessary to get to most up-to-date state from state `id`
     ///
     /// If `id` refers to the most current state, result is an empty list.
-    /// If `id` is not found at all, returns None
-    fn get_next_mutations(&self, key: &str, id: &str) -> Option<Vec<Mutation>>;
+    fn get_next_mutations(&self, key: &str, id: &str) -> GenericResult<Vec<Mutation>>;
 }
 
 pub struct Databases {

@@ -12,6 +12,7 @@ use config::{
     cli::{Cli, Commands},
     parse_config::Config,
 };
+use database::{sqlite::SqliteDatabase, traits::CacheDatabase};
 
 use crate::api::db_types::Mutation;
 
@@ -30,8 +31,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Test => {
             println!("Testing stuff");
-            let thing = Mutation::Delete { id: "hello".into() };
-            println!("{}", serde_json::to_string(&thing)?);
+            let db = SqliteDatabase::new("data");
+            db.add_mutation(
+                "test",
+                &Mutation::Delete {
+                    id: "blahblah".into(),
+                },
+            )?;
+            let res = db.get_next_mutations("test", "0")?;
+            println!("{res:?}");
         }
     }
 

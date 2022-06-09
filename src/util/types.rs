@@ -1,1 +1,3 @@
-pub type GenericResult<T> = Result<T, Box<dyn std::error::Error>>;
+use super::error::Error;
+
+pub type GenericResult<T> = Result<T, Error>;
