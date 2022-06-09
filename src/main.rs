@@ -6,7 +6,7 @@ pub mod util;
 #[macro_use]
 extern crate rocket;
 
-use api::server::{launch_server, prepare_server};
+use api::server::launch_server;
 use clap::Parser;
 use config::{
     cli::{Cli, Commands},
@@ -26,7 +26,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli_config.command {
         Commands::Run => {
-            prepare_server(&config)?;
             launch_server(config).await?;
         }
         Commands::Test => {
