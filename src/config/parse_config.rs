@@ -25,12 +25,14 @@ pub struct User {
     pub key: String,
 }
 
-pub fn read_config<T: AsRef<Path>>(path: T) -> Result<Config, Box<dyn std::error::Error>> {
-    let mut config_file = File::open(path)?;
-    let mut contents = String::new();
-    config_file.read_to_string(&mut contents)?;
+impl Config {
+    pub fn read_config<T: AsRef<Path>>(path: T) -> Result<Config, Box<dyn std::error::Error>> {
+        let mut config_file = File::open(path)?;
+        let mut contents = String::new();
+        config_file.read_to_string(&mut contents)?;
 
-    let parsed = toml::from_str(&contents)?;
+        let parsed = toml::from_str(&contents)?;
 
-    Ok(parsed)
+        Ok(parsed)
+    }
 }

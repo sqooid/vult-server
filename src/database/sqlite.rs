@@ -42,6 +42,34 @@ impl SqliteDatabase {
     }
 }
 
-impl StoreDatabase for SqliteDatabase {}
+impl StoreDatabase for SqliteDatabase {
+    fn apply_mutation(
+        &self,
+        key: &str,
+        mutation: crate::api::db_types::Mutation,
+    ) -> Result<(), super::error::DbError> {
+        todo!()
+    }
 
-impl CacheDatabase for SqliteDatabase {}
+    fn export_all(&self, key: &str) -> Vec<crate::api::db_types::Credential> {
+        todo!()
+    }
+}
+
+impl CacheDatabase for SqliteDatabase {
+    fn add_mutation(
+        &self,
+        key: &str,
+        mutation: crate::api::db_types::Mutation,
+    ) -> GenericResult<String> {
+        todo!()
+    }
+
+    fn get_next_mutations(
+        &self,
+        key: &str,
+        id: &str,
+    ) -> Option<Vec<crate::api::db_types::Mutation>> {
+        todo!()
+    }
+}
