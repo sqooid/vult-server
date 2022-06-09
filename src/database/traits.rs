@@ -3,14 +3,15 @@ use crate::{
     util::types::GenericResult,
 };
 
-use crate::util::error::Error;
-
 pub trait StoreDatabase {
     /// Apply a mutation to the store of the user of `key`
-    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> Result<(), Error>;
+    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<()>;
 
     /// Export the entire store of the user of `key` as a list of credentials
     fn export_all(&self, key: &str) -> Vec<Credential>;
+
+    /// Imports entire list of credentials into what should be an empty store
+    fn import_all(&self, key: &str, credentials: &[Credential]) -> GenericResult<()>;
 }
 
 pub trait CacheDatabase {

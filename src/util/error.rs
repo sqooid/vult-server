@@ -27,10 +27,10 @@ impl From<SystemTimeError> for Error {
     }
 }
 
-impl From<sqlite::Error> for Error {
-    fn from(e: sqlite::Error) -> Self {
+impl From<rusqlite::Error> for Error {
+    fn from(e: rusqlite::Error) -> Self {
         Self::Unknown {
-            message: e.message.unwrap_or_default(),
+            message: e.to_string(),
         }
     }
 }

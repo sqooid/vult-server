@@ -1,7 +1,10 @@
 use std::time::SystemTime;
 use std::{fs, path::PathBuf};
 
-use crate::api::db_types::Mutation;
+use rusqlite::params;
+use rusqlite::types::ToSqlOutput;
+
+use crate::api::db_types::{Credential, Mutation};
 use crate::util::error::Error;
 use crate::util::types::GenericResult;
 
@@ -22,35 +25,45 @@ impl SqliteDatabase {
         }
     }
 
-    fn open_db(&self, key: &str) -> GenericResult<sqlite::Connection> {
+    fn open_db(&self, key: &str) -> GenericResult<rusqlite::Connection> {
         let mut path: PathBuf = self.directory.clone();
         if !path.exists() {
             fs::create_dir_all(&path)?;
         }
         path.push(get_db_path(key));
-        let db = sqlite::open(&path)?;
+        let db = rusqlite::Connection::open(&path)?;
         Ok(db)
     }
 
-    fn open_store(&self, key: &str) -> GenericResult<sqlite::Connection> {
+    fn open_store(&self, key: &str) -> GenericResult<rusqlite::Connection> {
         let db = self.open_db(key)?;
-        db.execute("create table if not exists Store (id text primary key, value text)")?;
+        db.execute("create table if not exists Store (id text primary key, value text)", [])?;
         Ok(db)
     }
 
-    fn open_cache(&self, key: &str) -> GenericResult<sqlite::Connection> {
+    fn open_cache(&self, key: &str) -> GenericResult<rusqlite::Connection> {
         let db = self.open_db(key)?;
-        db.execute("create table if not exists Cache (id text primary key, mutation blob)")?;
+        db.execute("create table if not exists Cache (id text primary key, mutation blob)", [])?;
         Ok(db)
     }
 }
 
 impl StoreDatabase for SqliteDatabase {
-    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> Result<(), Error> {
+    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<()> {
+        let db = self.open_cache(&key)?;
+
+        match mutation {
+            Mutation::Add { credential } => {
+                let mut statement = db.prepare("insert into Store values")
+            }
+        }
+    }
+
+    fn export_all(&self, key: &str) -> Vec<Credential> {
         todo!()
     }
 
-    fn export_all(&self, key: &str) -> Vec<crate::api::db_types::Credential> {
+    fn import_all(&self, key: &str, credentials: &[Credential]) -> GenericResult<()> {
         todo!()
     }
 }
@@ -62,30 +75,30 @@ impl CacheDatabase for SqliteDatabase {
             .as_millis();
         let id = time.to_string();
 
-        let mutation_blob = bincode::serialize(&mutation)?;
+        let mutation_blob = bincode::serialize(mutation)?;
 
         let db = self.open_cache(&key)?;
-        let mut statement = db.prepare(format!("insert into Cache values ({}, ?)", &id))?;
-        statement.bind(1, mutation_blob.as_slice())?;
-        statement.next()?;
+        let mut statement = db.execute("insert into Cache values (?, ?)", params![id, mutation_blob])?;
 
         Ok(id)
     }
 
     fn get_next_mutations(&self, key: &str, id: &str) -> GenericResult<Vec<Mutation>> {
-        let db = self.open_cache(&key)?;
-        let mut cursor = db
-            .prepare("select * from Cache where id > ?")?
-            .into_cursor();
-        cursor.bind(&[sqlite::Value::String(id.into())])?;
-
         let mut mutations: Vec<Mutation> = Vec::new();
-        while let Some(row) = cursor.next()? {
-            let bin = row[1].as_binary().ok_or(Error::Unknown {
-                message: "Cache database values scuffed".into(),
-            })?;
-            let mutation: Mutation = bincode::deserialize(&bin)?;
-            mutations.push(mutation);
+
+        let db = self.open_cache(&key)?;
+        let mut statement = db
+            .prepare("select * from Cache where id > ?")?;
+        let mutation_blob_iter = statement.query_map([], |row|{
+            let mutation: Vec<u8> = row.get(1)?;
+            Ok(mutation)
+        })?;
+
+        for mutation_blob in mutation_blob_iter {
+            if let Ok(mutation_blob) = mutation_blob {
+                let mutation: Mutation = bincode::deserialize(&mutation_blob)?;
+                mutations.push(mutation);
+            }
         }
 
         Ok(mutations)
