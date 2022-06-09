@@ -37,26 +37,41 @@ impl SqliteDatabase {
 
     fn open_store(&self, key: &str) -> GenericResult<rusqlite::Connection> {
         let db = self.open_db(key)?;
-        db.execute("create table if not exists Store (id text primary key, value text)", [])?;
+        db.execute(
+            "create table if not exists Store (id text primary key, value text)",
+            [],
+        )?;
         Ok(db)
     }
 
     fn open_cache(&self, key: &str) -> GenericResult<rusqlite::Connection> {
         let db = self.open_db(key)?;
-        db.execute("create table if not exists Cache (id text primary key, mutation blob)", [])?;
+        db.execute(
+            "create table if not exists Cache (id text primary key, mutation blob)",
+            [],
+        )?;
         Ok(db)
     }
 }
 
 impl StoreDatabase for SqliteDatabase {
     fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<()> {
-        let db = self.open_cache(&key)?;
+        let db = self.open_store(&key)?;
 
         match mutation {
-            Mutation::Add { credential } => {
-                let mut statement = db.prepare("insert into Store values")
-            }
-        }
+            Mutation::Add { credential } => db.execute(
+                "insert into Store values (?, ?)",
+                [&credential.id, &credential.value],
+            )?,
+
+            Mutation::Delete { id } => db.execute("delete from Store where id = ?", [id])?,
+            Mutation::Modify { credential } => db.execute(
+                "update Store set value = ? where id = ?",
+                [&credential.value, &credential.id],
+            )?,
+        };
+
+        Ok(())
     }
 
     fn export_all(&self, key: &str) -> Vec<Credential> {
@@ -78,7 +93,10 @@ impl CacheDatabase for SqliteDatabase {
         let mutation_blob = bincode::serialize(mutation)?;
 
         let db = self.open_cache(&key)?;
-        let mut statement = db.execute("insert into Cache values (?, ?)", params![id, mutation_blob])?;
+        let mut statement = db.execute(
+            "insert into Cache values (?, ?)",
+            params![id, mutation_blob],
+        )?;
 
         Ok(id)
     }
@@ -87,9 +105,8 @@ impl CacheDatabase for SqliteDatabase {
         let mut mutations: Vec<Mutation> = Vec::new();
 
         let db = self.open_cache(&key)?;
-        let mut statement = db
-            .prepare("select * from Cache where id > ?")?;
-        let mutation_blob_iter = statement.query_map([], |row|{
+        let mut statement = db.prepare("select * from Cache where id > ?")?;
+        let mutation_blob_iter = statement.query_map([], |row| {
             let mutation: Vec<u8> = row.get(1)?;
             Ok(mutation)
         })?;

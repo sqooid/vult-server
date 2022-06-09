@@ -9,6 +9,6 @@ pub enum Mutation {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Credential {
-    id: String,
-    value: String,
+    pub id: String,
+    pub value: String,
 }
