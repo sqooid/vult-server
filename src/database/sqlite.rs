@@ -2,7 +2,6 @@ use std::time::SystemTime;
 use std::{fs, path::PathBuf};
 
 use rusqlite::params;
-use rusqlite::types::ToSqlOutput;
 
 use crate::api::db_types::{Credential, Mutation};
 use crate::util::error::Error;

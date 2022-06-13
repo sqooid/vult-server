@@ -38,9 +38,10 @@ impl From<rusqlite::Error> for Error {
 }
 
 impl From<bincode::Error> for Error {
-    fn from(_: bincode::Error) -> Self {
+    fn from(e: bincode::Error) -> Self {
         Self::Unknown {
-            message: "Error serializing/deserializing bincode".into(),
+            // message: "Error serializing/deserializing bincode".into(),
+            message: e.to_string(),
         }
     }
 }
