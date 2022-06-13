@@ -4,6 +4,7 @@ use std::{fmt::Display, time::SystemTimeError};
 pub enum Error {
     DuplicateId { id: String },
     Time { message: String },
+    ExistingUser { message: String },
     Unknown { message: String },
 }
 
@@ -12,7 +13,8 @@ impl Display for Error {
         match self {
             Self::DuplicateId { id } => write!(f, "Duplicate id: {}", id),
             Self::Time { message } => write!(f, "Time error: {}", message),
-            Self::Unknown { message } => write!(f, "{}", message),
+            Self::Unknown { message } => write!(f, "Error: {}", message),
+            Self::ExistingUser { message } => write!(f, "Existing user: {}", message),
         }
     }
 }

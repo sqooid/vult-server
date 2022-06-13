@@ -8,7 +8,7 @@ pub trait StoreDatabase {
     fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<()>;
 
     /// Export the entire store of the user of `key` as a list of credentials
-    fn export_all(&self, key: &str) -> Vec<Credential>;
+    fn export_all(&self, key: &str) -> GenericResult<Vec<Credential>>;
 
     /// Imports entire list of credentials into what should be an empty store
     fn import_all(&self, key: &str, credentials: &[Credential]) -> GenericResult<()>;

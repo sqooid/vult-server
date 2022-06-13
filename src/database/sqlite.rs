@@ -74,12 +74,41 @@ impl StoreDatabase for SqliteDatabase {
         Ok(())
     }
 
-    fn export_all(&self, key: &str) -> Vec<Credential> {
-        todo!()
+    fn export_all(&self, key: &str) -> GenericResult<Vec<Credential>> {
+        let db = self.open_store(&key)?;
+        let mut statement = db.prepare("select * from Store")?;
+
+        let iter = statement.query_map([], |row| {
+            Ok(Credential {
+                id: row.get(0)?,
+                value: row.get(1)?,
+            })
+        })?;
+
+        let mut credentials: Vec<Credential> = Vec::new();
+        for credential in iter {
+            credentials.push(credential?);
+        }
+
+        Ok(credentials)
     }
 
     fn import_all(&self, key: &str, credentials: &[Credential]) -> GenericResult<()> {
-        todo!()
+        let db = self.open_store(&key)?;
+
+        let mut statement = db.prepare("select * from Store limit 1")?;
+        if statement.exists([])? {
+            return Err(Error::ExistingUser {
+                message: format!("User with key: {key} already exists"),
+            });
+        }
+
+        let mut statement = db.prepare("insert into Store values (?, ?)")?;
+        for credential in credentials {
+            statement.execute([&credential.id, &credential.value])?;
+        }
+
+        Ok(())
     }
 }
 
@@ -106,7 +135,7 @@ impl CacheDatabase for SqliteDatabase {
 
         let db = self.open_cache(&key)?;
         let mut statement = db.prepare("select * from Cache where id > ?")?;
-        let mutation_blob_iter = statement.query_map([], |row| {
+        let mutation_blob_iter = statement.query_map([id], |row| {
             let mutation: Vec<u8> = row.get(1)?;
             Ok(mutation)
         })?;

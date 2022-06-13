@@ -14,7 +14,10 @@ use config::{
 };
 use database::{sqlite::SqliteDatabase, traits::CacheDatabase};
 
-use crate::api::db_types::Mutation;
+use crate::{
+    api::db_types::{Credential, Mutation},
+    database::traits::StoreDatabase,
+};
 
 #[rocket::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -39,6 +42,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )?;
             let res = db.get_next_mutations("test", "0")?;
             println!("{res:?}");
+            // db.import_all(
+            //     "test",
+            //     &vec![Credential {
+            //         id: "blah".into(),
+            //         value: "chicken".into(),
+            //     }],
+            // )?;
+
+            let exports = db.export_all("test")?;
+            println!("{exports:?}");
         }
     }
 
