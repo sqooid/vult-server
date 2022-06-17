@@ -6,6 +6,7 @@ pub enum Error {
     Time { message: String },
     ExistingUser { message: String },
     Unknown { message: String },
+    Config { message: String },
 }
 
 impl Display for Error {
@@ -14,7 +15,8 @@ impl Display for Error {
             Self::DuplicateId { id } => write!(f, "Duplicate id: {}", id),
             Self::Time { message } => write!(f, "Time error: {}", message),
             Self::Unknown { message } => write!(f, "Error: {}", message),
-            Self::ExistingUser { message } => write!(f, "Existing user: {}", message),
+            Self::ExistingUser { message } => write!(f, "Already existing user: {}", message),
+            Self::Config { message } => write!(f, "Config error: {}", message),
         }
     }
 }
@@ -50,6 +52,14 @@ impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Self::Unknown {
             message: e.to_string(),
+        }
+    }
+}
+
+impl From<toml::de::Error> for Error {
+    fn from(_: toml::de::Error) -> Self {
+        Self::Config {
+            message: "Failed to parse config file".into(),
         }
     }
 }

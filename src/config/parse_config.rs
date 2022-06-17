@@ -1,6 +1,8 @@
-use std::{fs::File, io::Read, path::Path};
+use std::{fmt::Display, fs::File, io::Read, path::Path};
 
 use serde::Deserialize;
+
+use crate::util::{error::Error, types::GenericResult};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -26,10 +28,16 @@ pub struct User {
 }
 
 impl Config {
-    pub fn read_config<T: AsRef<Path>>(path: T) -> Result<Config, Box<dyn std::error::Error>> {
-        let mut config_file = File::open(path)?;
+    pub fn read_config<T: AsRef<Path> + Display>(path: T) -> GenericResult<Config> {
+        let mut config_file = File::open(&path).map_err(|_e| Error::Config {
+            message: format!("Failed to find config file {path}"),
+        })?;
         let mut contents = String::new();
-        config_file.read_to_string(&mut contents)?;
+        config_file
+            .read_to_string(&mut contents)
+            .map_err(|_e| Error::Config {
+                message: format!("Failed to read config file {path}"),
+            })?;
 
         let parsed = toml::from_str(&contents)?;
 
