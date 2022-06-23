@@ -1,5 +1,5 @@
 use rocket::{
-    http::{private::cookie::Key, Status},
+    http::Status,
     request::{self, FromRequest},
     Request,
 };
