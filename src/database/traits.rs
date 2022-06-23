@@ -12,6 +12,9 @@ pub trait StoreDatabase {
 
     /// Imports entire list of credentials into what should be an empty store
     fn import_all(&self, key: &str, credentials: &[Credential]) -> GenericResult<()>;
+
+    /// Check if database is empty for user of 'key'
+    fn is_empty(&self, key: &str) -> GenericResult<bool>;
 }
 
 pub trait CacheDatabase {
@@ -25,6 +28,9 @@ pub trait CacheDatabase {
     ///
     /// If `id` refers to the most current state, result is an empty list.
     fn get_next_mutations(&self, key: &str, id: &str) -> GenericResult<Vec<Mutation>>;
+
+    /// Check if database is empty for user of 'key'
+    fn is_empty(&self, key: &str) -> GenericResult<bool>;
 }
 
 pub struct Databases {

@@ -6,7 +6,7 @@ use rocket::{
 
 use crate::{config::parse_config::Config, util::error::Error};
 
-pub struct User(String);
+pub struct User(pub String);
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for User {
@@ -16,7 +16,7 @@ impl<'r> FromRequest<'r> for User {
             let config = req
                 .rocket()
                 .state::<Config>()
-                .expect("Missing server config in rocket instance?");
+                .expect("Rocket instance contains managed state for server config");
             if config.users.iter().any(|i| i.key == key) {
                 request::Outcome::Success(Self(key.into()))
             } else {
@@ -29,7 +29,7 @@ impl<'r> FromRequest<'r> for User {
             }
         } else {
             request::Outcome::Failure((
-                Status::NotFound,
+                Status::BadRequest,
                 Error::Unknown {
                     message: "Missing key in authorization header".into(),
                 },

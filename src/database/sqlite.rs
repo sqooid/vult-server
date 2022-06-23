@@ -109,6 +109,16 @@ impl StoreDatabase for SqliteDatabase {
 
         Ok(())
     }
+
+    fn is_empty(&self, key: &str) -> GenericResult<bool> {
+        let db = self.open_store(&key)?;
+        let mut statement = db.prepare("select id from Store limit 1")?;
+        let mut iter = statement.query_map([], |row| {
+            let result: bool = row.get(1)?;
+            Ok(result)
+        })?;
+        Ok(iter.next().is_none())
+    }
 }
 
 impl CacheDatabase for SqliteDatabase {
@@ -121,7 +131,7 @@ impl CacheDatabase for SqliteDatabase {
         let mutation_blob = bincode::serialize(mutation)?;
 
         let db = self.open_cache(&key)?;
-        let mut statement = db.execute(
+        db.execute(
             "insert into Cache values (?, ?)",
             params![id, mutation_blob],
         )?;
@@ -147,5 +157,15 @@ impl CacheDatabase for SqliteDatabase {
         }
 
         Ok(mutations)
+    }
+
+    fn is_empty(&self, key: &str) -> GenericResult<bool> {
+        let db = self.open_cache(&key)?;
+        let mut statement = db.prepare("select id from Cache limit 1")?;
+        let mut iter = statement.query_map([], |row| {
+            let result: bool = row.get(1)?;
+            Ok(result)
+        })?;
+        Ok(iter.next().is_none())
     }
 }
