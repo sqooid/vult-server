@@ -17,6 +17,8 @@ pub fn check_user_state(key: User, db: &State<Databases>) -> Status {
 
 #[cfg(test)]
 mod test {
+    use std::path::Path;
+
     use rocket::{
         http::{Header, Status},
         local::blocking::Client,
@@ -24,9 +26,24 @@ mod test {
 
     use crate::{
         api::{db_types::Mutation, server::build_server},
-        config::test_config::init_test_config,
+        config::parse_config::{Config, User},
         database::traits::Databases,
     };
+
+    fn init_test_config(dir: &str) -> Config {
+        if Path::new(dir).exists() {
+            std::fs::remove_dir_all(dir).expect("Remove test data directory");
+        }
+        std::fs::create_dir_all(dir).expect("Create test data directory");
+        Config {
+            users: vec![User {
+                alias: None,
+                key: "unit".into(),
+            }],
+            cache_count: 50,
+            db_directory: dir.into(),
+        }
+    }
 
     #[test]
     fn invalid_key() {
