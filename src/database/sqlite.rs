@@ -55,7 +55,7 @@ impl SqliteDatabase {
 
 impl StoreDatabase for SqliteDatabase {
     fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<bool> {
-        let db = self.open_store(&key)?;
+        let db = self.open_store(key)?;
 
         match mutation {
             Mutation::Add { credential } => db
@@ -63,25 +63,25 @@ impl StoreDatabase for SqliteDatabase {
                     "insert into Store values (?, ?)",
                     [&credential.id, &credential.value],
                 )
-                .map(|res| if res > 0 { true } else { false })
+                .map(|res| res > 0)
                 .map_err(|err| err.into()),
 
             Mutation::Delete { id } => db
                 .execute("delete from Store where id = ?", [id])
-                .map(|res| if res > 0 { true } else { false })
+                .map(|res| res > 0)
                 .map_err(|err| err.into()),
             Mutation::Modify { credential } => db
                 .execute(
                     "update Store set value = ? where id = ?",
                     [&credential.value, &credential.id],
                 )
-                .map(|res| if res > 0 { true } else { false })
+                .map(|res| res > 0)
                 .map_err(|err| err.into()),
         }
     }
 
     fn export_all(&self, key: &str) -> GenericResult<Vec<Credential>> {
-        let db = self.open_store(&key)?;
+        let db = self.open_store(key)?;
         let mut statement = db.prepare("select * from Store")?;
 
         let iter = statement.query_map([], |row| {
@@ -100,7 +100,7 @@ impl StoreDatabase for SqliteDatabase {
     }
 
     fn import_all(&self, key: &str, credentials: &[Credential]) -> GenericResult<()> {
-        let db = self.open_store(&key)?;
+        let db = self.open_store(key)?;
 
         let mut statement = db.prepare("select * from Store limit 1")?;
         if statement.exists([])? {
@@ -118,7 +118,7 @@ impl StoreDatabase for SqliteDatabase {
     }
 
     fn is_empty(&self, key: &str) -> GenericResult<bool> {
-        let db = self.open_store(&key)?;
+        let db = self.open_store(key)?;
         let mut statement = db.prepare("select id from Store limit 1")?;
         let mut iter = statement.query_map([], |row| {
             let result: bool = row.get(1)?;
@@ -137,7 +137,7 @@ impl CacheDatabase for SqliteDatabase {
 
         let mutation_blob = bincode::serialize(mutation)?;
 
-        let db = self.open_cache(&key)?;
+        let db = self.open_cache(key)?;
         db.execute(
             "insert into Cache values (?, ?)",
             params![id, mutation_blob],
@@ -149,25 +149,23 @@ impl CacheDatabase for SqliteDatabase {
     fn get_next_mutations(&self, key: &str, id: &str) -> GenericResult<Vec<Mutation>> {
         let mut mutations: Vec<Mutation> = Vec::new();
 
-        let db = self.open_cache(&key)?;
+        let db = self.open_cache(key)?;
         let mut statement = db.prepare("select * from Cache where id > ?")?;
         let mutation_blob_iter = statement.query_map([id], |row| {
             let mutation: Vec<u8> = row.get(1)?;
             Ok(mutation)
         })?;
 
-        for mutation_blob in mutation_blob_iter {
-            if let Ok(mutation_blob) = mutation_blob {
-                let mutation: Mutation = bincode::deserialize(&mutation_blob)?;
-                mutations.push(mutation);
-            }
+        for mutation_blob in mutation_blob_iter.flatten() {
+            let mutation: Mutation = bincode::deserialize(&mutation_blob)?;
+            mutations.push(mutation);
         }
 
         Ok(mutations)
     }
 
     fn is_empty(&self, key: &str) -> GenericResult<bool> {
-        let db = self.open_cache(&key)?;
+        let db = self.open_cache(key)?;
         let mut statement = db.prepare("select id from Cache limit 1")?;
         let mut iter = statement.query_map([], |row| {
             let result: bool = row.get(1)?;

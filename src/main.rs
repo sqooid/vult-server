@@ -12,7 +12,7 @@ use config::{
     cli::{Cli, Commands},
     parse_config::Config,
 };
-use database::{sqlite::SqliteDatabase, traits::CacheDatabase};
+use database::{sqlite::SqliteDatabase};
 
 use crate::{
     api::db_types::{Credential, Mutation},

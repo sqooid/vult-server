@@ -48,11 +48,11 @@ impl Databases {
         Self { store, cache }
     }
 
-    pub fn store<'a>(&'a self) -> &'a dyn StoreDatabase {
+    pub fn store(&self) -> &dyn StoreDatabase {
         self.store.as_ref()
     }
 
-    pub fn cache<'a>(&'a self) -> &'a dyn CacheDatabase {
+    pub fn cache(&self) -> &dyn CacheDatabase {
         self.cache.as_ref()
     }
 }

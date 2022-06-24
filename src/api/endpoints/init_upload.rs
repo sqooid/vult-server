@@ -42,11 +42,10 @@ mod test {
 
     use crate::{
         api::{
-            db_types::{Credential, Mutation},
+            db_types::{Credential},
             server::build_server,
         },
         config::parse_config::{Config, User},
-        database::traits::Databases,
     };
 
     fn init_test_config(dir: &str) -> Config {
