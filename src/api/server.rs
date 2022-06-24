@@ -5,7 +5,7 @@ use crate::{
     database::{sqlite::SqliteDatabase, traits::Databases},
 };
 
-use super::endpoints::init_user::check_user_state;
+use super::endpoints::init::check_user_state;
 
 pub fn build_server(config: Config) -> Rocket<Build> {
     let sqlite_store = SqliteDatabase::new(&config.db_directory);

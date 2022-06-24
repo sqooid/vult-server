@@ -1,2 +1,2 @@
-pub mod init_user;
+pub mod init;
 pub mod sync;

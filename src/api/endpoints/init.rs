@@ -33,7 +33,7 @@ mod test {
         let config = init_test_config("test/init/invalid_key");
         let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
         let response = client
-            .get(uri!(super::check_user_state))
+            .get(uri!(init::check_user_state))
             .header(Header::new("Authentication", "random"))
             .dispatch();
         assert_eq!(response.status(), Status::NotFound);
@@ -43,7 +43,7 @@ mod test {
     fn missing_header() {
         let config = init_test_config("test/init/missing_header");
         let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
-        let response = client.get(uri!(super::check_user_state)).dispatch();
+        let response = client.get(uri!(init::check_user_state)).dispatch();
         assert_eq!(response.status(), Status::BadRequest);
     }
 
@@ -52,7 +52,7 @@ mod test {
         let config = init_test_config("test/init/ready");
         let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
         let response = client
-            .get(uri!(super::check_user_state))
+            .get(uri!(init::check_user_state))
             .header(Header::new("Authentication", "unit"))
             .dispatch();
         assert_eq!(response.status(), Status::Ok);
@@ -70,7 +70,7 @@ mod test {
             .add_mutation("unit", &Mutation::Delete { id: "blah".into() })
             .unwrap();
         let response = client
-            .get(uri!(super::check_user_state))
+            .get(uri!(init::check_user_state))
             .header(Header::new("Authentication", "unit"))
             .dispatch();
         assert_eq!(response.status(), Status::Conflict);
