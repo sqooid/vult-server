@@ -54,23 +54,30 @@ impl SqliteDatabase {
 }
 
 impl StoreDatabase for SqliteDatabase {
-    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<()> {
+    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<bool> {
         let db = self.open_store(&key)?;
 
         match mutation {
-            Mutation::Add { credential } => db.execute(
-                "insert into Store values (?, ?)",
-                [&credential.id, &credential.value],
-            )?,
+            Mutation::Add { credential } => db
+                .execute(
+                    "insert into Store values (?, ?)",
+                    [&credential.id, &credential.value],
+                )
+                .map(|res| if res > 0 { true } else { false })
+                .map_err(|err| err.into()),
 
-            Mutation::Delete { id } => db.execute("delete from Store where id = ?", [id])?,
-            Mutation::Modify { credential } => db.execute(
-                "update Store set value = ? where id = ?",
-                [&credential.value, &credential.id],
-            )?,
-        };
-
-        Ok(())
+            Mutation::Delete { id } => db
+                .execute("delete from Store where id = ?", [id])
+                .map(|res| if res > 0 { true } else { false })
+                .map_err(|err| err.into()),
+            Mutation::Modify { credential } => db
+                .execute(
+                    "update Store set value = ? where id = ?",
+                    [&credential.value, &credential.id],
+                )
+                .map(|res| if res > 0 { true } else { false })
+                .map_err(|err| err.into()),
+        }
     }
 
     fn export_all(&self, key: &str) -> GenericResult<Vec<Credential>> {

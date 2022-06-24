@@ -34,24 +34,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Test => {
             println!("Testing stuff");
             let db = SqliteDatabase::new("data");
-            db.add_mutation(
+            db.apply_mutation(
                 "test",
-                &Mutation::Delete {
-                    id: "blahblah".into(),
+                &Mutation::Modify {
+                    credential: Credential {
+                        id: "nothing".into(),
+                        value: "nothing".into(),
+                    },
                 },
             )?;
-            let res = db.get_next_mutations("test", "0")?;
-            println!("{res:?}");
-            // db.import_all(
-            //     "test",
-            //     &vec![Credential {
-            //         id: "blah".into(),
-            //         value: "chicken".into(),
-            //     }],
-            // )?;
-
-            let exports = db.export_all("test")?;
-            println!("{exports:?}");
         }
     }
 

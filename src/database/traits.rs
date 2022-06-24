@@ -5,7 +5,9 @@ use crate::{
 
 pub trait StoreDatabase {
     /// Apply a mutation to the store of the user of `key`
-    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<()>;
+    ///
+    /// Returns true if the mutation resulted in a change, false if no changes were made
+    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<bool>;
 
     /// Export the entire store of the user of `key` as a list of credentials
     fn export_all(&self, key: &str) -> GenericResult<Vec<Credential>>;
