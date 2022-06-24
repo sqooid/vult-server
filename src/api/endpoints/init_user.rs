@@ -8,7 +8,7 @@ pub fn check_user_state(key: User, db: &State<Databases>) -> Status {
     if let Ok(empty) = db.cache().is_empty(&key) {
         match empty {
             true => Status::Ok,
-            _ => Status::Forbidden,
+            _ => Status::Conflict,
         }
     } else {
         Status::BadRequest
@@ -73,6 +73,6 @@ mod test {
             .get(uri!(super::check_user_state))
             .header(Header::new("Authentication", "unit"))
             .dispatch();
-        assert_eq!(response.status(), Status::Forbidden);
+        assert_eq!(response.status(), Status::Conflict);
     }
 }
