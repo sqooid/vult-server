@@ -37,8 +37,8 @@ mod test {
         std::fs::create_dir_all(dir).expect("Create test data directory");
         Config {
             users: vec![User {
-                alias: None,
-                key: "unit".into(),
+                alias: "unit".into(),
+                keys: vec!["unit".into()],
             }],
             cache_count: 50,
             db_directory: dir.into(),

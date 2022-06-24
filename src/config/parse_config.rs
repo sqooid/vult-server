@@ -23,8 +23,8 @@ fn default_db_directory() -> String {
 
 #[derive(Debug, Deserialize)]
 pub struct User {
-    pub alias: Option<String>,
-    pub key: String,
+    pub alias: String,
+    pub keys: Vec<String>,
 }
 
 impl Config {

@@ -2,4 +2,4 @@ cache_count = 100
 
 [[users]]
 alias = "main"
-key = "squid"
+key = ["squid"]

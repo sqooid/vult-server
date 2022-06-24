@@ -17,15 +17,18 @@ impl<'r> FromRequest<'r> for User {
                 .rocket()
                 .state::<Config>()
                 .expect("Rocket instance contains managed state for server config");
-            if config.users.iter().any(|i| i.key == key) {
-                request::Outcome::Success(Self(key.into()))
-            } else {
-                request::Outcome::Failure((
+            match config
+                .users
+                .iter()
+                .find(|i| i.keys.contains(&key.to_owned()))
+            {
+                Some(user) => request::Outcome::Success(Self(user.alias.to_owned())),
+                None => request::Outcome::Failure((
                     Status::NotFound,
                     Error::Unknown {
                         message: "Key does not belong to any user".into(),
                     },
-                ))
+                )),
             }
         } else {
             request::Outcome::Failure((
