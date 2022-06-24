@@ -5,7 +5,7 @@ use crate::{
     database::{sqlite::SqliteDatabase, traits::Databases},
 };
 
-use super::endpoints::init::check_user_state;
+use super::endpoints::{init::check_user_state, init_upload::user_initial_upload};
 
 pub fn build_server(config: Config) -> Rocket<Build> {
     let sqlite_store = SqliteDatabase::new(&config.db_directory);
@@ -16,7 +16,7 @@ pub fn build_server(config: Config) -> Rocket<Build> {
             Box::new(sqlite_cache),
         ))
         .manage(config)
-        .mount("/", routes![check_user_state])
+        .mount("/", routes![check_user_state, user_initial_upload])
 }
 
 pub async fn launch_server(config: Config) -> Result<(), Box<dyn std::error::Error>> {
