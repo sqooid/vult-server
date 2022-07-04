@@ -3,9 +3,9 @@ use rocket::{http::Status, State};
 use crate::{api::guards::user::User, database::traits::Databases};
 
 #[get("/init")]
-pub fn check_user_state(key: User, db: &State<Databases>) -> Status {
-    let User(key) = key;
-    if let Ok(empty) = db.cache().is_empty(&key) {
+pub fn check_user_state(user: User, db: &State<Databases>) -> Status {
+    let User(alias) = user;
+    if let Ok(empty) = db.cache().is_empty(&alias) {
         match empty {
             true => Status::Ok,
             _ => Status::Conflict,

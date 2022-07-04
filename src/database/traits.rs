@@ -7,16 +7,16 @@ pub trait StoreDatabase {
     /// Apply a mutation to the store of the user of `key`
     ///
     /// Returns true if the mutation resulted in a change, false if no changes were made
-    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<bool>;
+    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<bool>;
 
     /// Export the entire store of the user of `key` as a list of credentials
-    fn export_all(&self, key: &str) -> GenericResult<Vec<Credential>>;
+    fn export_all(&self, alias: &str) -> GenericResult<Vec<Credential>>;
 
     /// Imports entire list of credentials into what should be an empty store
-    fn import_all(&self, key: &str, credentials: &[Credential]) -> GenericResult<()>;
+    fn import_all(&self, alias: &str, credentials: &[Credential]) -> GenericResult<()>;
 
     /// Check if database is empty for user of 'key'
-    fn is_empty(&self, key: &str) -> GenericResult<bool>;
+    fn is_empty(&self, alias: &str) -> GenericResult<bool>;
 }
 
 pub trait CacheDatabase {
@@ -24,15 +24,15 @@ pub trait CacheDatabase {
     ///
     /// Returns the `id` of the newly cached state
     /// which can be used to sync efficiently
-    fn add_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<String>;
+    fn add_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<String>;
 
     /// Get all mutations necessary to get to most up-to-date state from state `id`
     ///
     /// If `id` refers to the most current state, result is an empty list.
-    fn get_next_mutations(&self, key: &str, id: &str) -> GenericResult<Vec<Mutation>>;
+    fn get_next_mutations(&self, alias: &str, id: &str) -> GenericResult<Vec<Mutation>>;
 
     /// Check if database is empty for user of 'key'
-    fn is_empty(&self, key: &str) -> GenericResult<bool>;
+    fn is_empty(&self, alias: &str) -> GenericResult<bool>;
 }
 
 pub struct Databases {

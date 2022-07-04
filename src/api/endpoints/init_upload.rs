@@ -8,17 +8,17 @@ use crate::{
 
 #[get("/init/upload", data = "<data>")]
 pub fn user_initial_upload(
-    key: User,
+    user: User,
     db: &State<Databases>,
     data: Json<Vec<Credential>>,
 ) -> Status {
-    let User(key) = key;
-    if let Ok(store_empty) = db.store().is_empty(&key) {
-        if let Ok(cache_empty) = db.cache().is_empty(&key) {
+    let User(alias) = user;
+    if let Ok(store_empty) = db.store().is_empty(&alias) {
+        if let Ok(cache_empty) = db.cache().is_empty(&alias) {
             if !store_empty || !cache_empty {
                 Status::Conflict
             } else {
-                match db.store().import_all(&key, &data) {
+                match db.store().import_all(&alias, &data) {
                     Ok(_) => Status::Ok,
                     Err(_) => Status::InternalServerError,
                 }

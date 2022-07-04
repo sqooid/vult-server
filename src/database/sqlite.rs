@@ -13,8 +13,8 @@ pub struct SqliteDatabase {
     directory: PathBuf,
 }
 
-fn get_db_path(key: &str) -> String {
-    format!("{}.sqlite", key)
+fn get_db_path(alias: &str) -> String {
+    format!("{}.sqlite", alias)
 }
 
 impl SqliteDatabase {
@@ -24,18 +24,18 @@ impl SqliteDatabase {
         }
     }
 
-    fn open_db(&self, key: &str) -> GenericResult<rusqlite::Connection> {
+    fn open_db(&self, alias: &str) -> GenericResult<rusqlite::Connection> {
         let mut path: PathBuf = self.directory.clone();
         if !path.exists() {
             fs::create_dir_all(&path)?;
         }
-        path.push(get_db_path(key));
+        path.push(get_db_path(alias));
         let db = rusqlite::Connection::open(&path)?;
         Ok(db)
     }
 
-    fn open_store(&self, key: &str) -> GenericResult<rusqlite::Connection> {
-        let db = self.open_db(key)?;
+    fn open_store(&self, alias: &str) -> GenericResult<rusqlite::Connection> {
+        let db = self.open_db(alias)?;
         db.execute(
             "create table if not exists Store (id text primary key, value text)",
             [],
@@ -43,8 +43,8 @@ impl SqliteDatabase {
         Ok(db)
     }
 
-    fn open_cache(&self, key: &str) -> GenericResult<rusqlite::Connection> {
-        let db = self.open_db(key)?;
+    fn open_cache(&self, alias: &str) -> GenericResult<rusqlite::Connection> {
+        let db = self.open_db(alias)?;
         db.execute(
             "create table if not exists Cache (id text primary key, mutation blob)",
             [],
@@ -54,8 +54,8 @@ impl SqliteDatabase {
 }
 
 impl StoreDatabase for SqliteDatabase {
-    fn apply_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<bool> {
-        let db = self.open_store(key)?;
+    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<bool> {
+        let db = self.open_store(alias)?;
 
         match mutation {
             Mutation::Add { credential } => db
@@ -80,8 +80,8 @@ impl StoreDatabase for SqliteDatabase {
         }
     }
 
-    fn export_all(&self, key: &str) -> GenericResult<Vec<Credential>> {
-        let db = self.open_store(key)?;
+    fn export_all(&self, alias: &str) -> GenericResult<Vec<Credential>> {
+        let db = self.open_store(alias)?;
         let mut statement = db.prepare("select * from Store")?;
 
         let iter = statement.query_map([], |row| {
@@ -99,13 +99,13 @@ impl StoreDatabase for SqliteDatabase {
         Ok(credentials)
     }
 
-    fn import_all(&self, key: &str, credentials: &[Credential]) -> GenericResult<()> {
-        let db = self.open_store(key)?;
+    fn import_all(&self, alias: &str, credentials: &[Credential]) -> GenericResult<()> {
+        let db = self.open_store(alias)?;
 
         let mut statement = db.prepare("select * from Store limit 1")?;
         if statement.exists([])? {
             return Err(Error::ExistingUser {
-                message: format!("User with key: {key} already exists"),
+                message: format!("User with alias: {alias} already exists"),
             });
         }
 
@@ -117,8 +117,8 @@ impl StoreDatabase for SqliteDatabase {
         Ok(())
     }
 
-    fn is_empty(&self, key: &str) -> GenericResult<bool> {
-        let db = self.open_store(key)?;
+    fn is_empty(&self, alias: &str) -> GenericResult<bool> {
+        let db = self.open_store(alias)?;
         let mut statement = db.prepare("select id from Store limit 1")?;
         let mut iter = statement.query_map([], |row| {
             let result: bool = row.get(1)?;
@@ -129,7 +129,7 @@ impl StoreDatabase for SqliteDatabase {
 }
 
 impl CacheDatabase for SqliteDatabase {
-    fn add_mutation(&self, key: &str, mutation: &Mutation) -> GenericResult<String> {
+    fn add_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<String> {
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
             .as_millis();
@@ -137,7 +137,7 @@ impl CacheDatabase for SqliteDatabase {
 
         let mutation_blob = bincode::serialize(mutation)?;
 
-        let db = self.open_cache(key)?;
+        let db = self.open_cache(alias)?;
         db.execute(
             "insert into Cache values (?, ?)",
             params![id, mutation_blob],
@@ -146,10 +146,10 @@ impl CacheDatabase for SqliteDatabase {
         Ok(id)
     }
 
-    fn get_next_mutations(&self, key: &str, id: &str) -> GenericResult<Vec<Mutation>> {
+    fn get_next_mutations(&self, alias: &str, id: &str) -> GenericResult<Vec<Mutation>> {
         let mut mutations: Vec<Mutation> = Vec::new();
 
-        let db = self.open_cache(key)?;
+        let db = self.open_cache(alias)?;
         let mut statement = db.prepare("select * from Cache where id > ?")?;
         let mutation_blob_iter = statement.query_map([id], |row| {
             let mutation: Vec<u8> = row.get(1)?;
@@ -164,8 +164,8 @@ impl CacheDatabase for SqliteDatabase {
         Ok(mutations)
     }
 
-    fn is_empty(&self, key: &str) -> GenericResult<bool> {
-        let db = self.open_cache(key)?;
+    fn is_empty(&self, alias: &str) -> GenericResult<bool> {
+        let db = self.open_cache(alias)?;
         let mut statement = db.prepare("select id from Cache limit 1")?;
         let mut iter = statement.query_map([], |row| {
             let result: bool = row.get(1)?;
