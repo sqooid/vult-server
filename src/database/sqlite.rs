@@ -5,6 +5,7 @@ use rusqlite::params;
 
 use crate::api::db_types::{Credential, Mutation};
 use crate::util::error::Error;
+use crate::util::id::new_cred_id;
 use crate::util::types::GenericResult;
 
 use super::traits::{CacheDatabase, StoreDatabase};
@@ -54,29 +55,44 @@ impl SqliteDatabase {
 }
 
 impl StoreDatabase for SqliteDatabase {
-    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<bool> {
+    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<()> {
         let db = self.open_store(alias)?;
 
         match mutation {
-            Mutation::Add { credential } => db
-                .execute(
-                    "insert into Store values (?, ?)",
-                    [&credential.id, &credential.value],
-                )
-                .map(|res| res > 0)
-                .map_err(|err| err.into()),
+            Mutation::Add { credential } => match db.execute(
+                "insert into Store values (?, ?)",
+                [&credential.id, &credential.value],
+            )? {
+                1 => Ok(()),
+                _ => {
+                    let mut new_id = String::new();
+                    while {
+                        new_id = new_cred_id();
+                        db.execute(
+                            "insert into Store values (?, ?)",
+                            [&new_id, &credential.value],
+                        )? == 0
+                    } {}
+                    Err(Error::DuplicateId {
+                        id: credential.id.to_owned(),
+                        new_id: new_id,
+                    })
+                }
+            },
 
-            Mutation::Delete { id } => db
-                .execute("delete from Store where id = ?", [id])
-                .map(|res| res > 0)
-                .map_err(|err| err.into()),
-            Mutation::Modify { credential } => db
-                .execute(
-                    "update Store set value = ? where id = ?",
-                    [&credential.value, &credential.id],
-                )
-                .map(|res| res > 0)
-                .map_err(|err| err.into()),
+            Mutation::Delete { id } => match db.execute("delete from Store where id = ?", [id])? {
+                1 => Ok(()),
+                _ => Err(Error::MissingItem { id: id.to_owned() }),
+            },
+            Mutation::Modify { credential } => match db.execute(
+                "update Store set value = ? where id = ?",
+                [&credential.value, &credential.id],
+            )? {
+                1 => Ok(()),
+                _ => Err(Error::MissingItem {
+                    id: credential.id.to_owned(),
+                }),
+            },
         }
     }
 

@@ -2,7 +2,8 @@ use std::{fmt::Display, time::SystemTimeError};
 
 #[derive(Debug)]
 pub enum Error {
-    DuplicateId { id: String },
+    DuplicateId { id: String, new_id: String },
+    MissingItem { id: String },
     Time { message: String },
     ExistingUser { message: String },
     Unknown { message: String },
@@ -12,7 +13,10 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::DuplicateId { id } => write!(f, "Duplicate id: {}", id),
+            Self::DuplicateId { id, new_id } => {
+                write!(f, "Duplicate id: {id} changed to {new_id}")
+            }
+            Self::MissingItem { id } => write!(f, "Missing item: {id}"),
             Self::Time { message } => write!(f, "Time error: {}", message),
             Self::Unknown { message } => write!(f, "Error: {}", message),
             Self::ExistingUser { message } => write!(f, "Already existing user: {}", message),
