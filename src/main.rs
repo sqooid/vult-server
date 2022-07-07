@@ -12,7 +12,8 @@ use config::{
     cli::{Cli, Commands},
     parse_config::Config,
 };
-use database::{sqlite::SqliteDatabase};
+use database::sqlite::SqliteDatabase;
+use util::id::new_cred_id;
 
 use crate::{
     api::db_types::{Credential, Mutation},
@@ -33,16 +34,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Test => {
             println!("Testing stuff");
-            let db = SqliteDatabase::new("data");
-            db.apply_mutation(
-                "test",
-                &Mutation::Modify {
-                    credential: Credential {
-                        id: "nothing".into(),
-                        value: "nothing".into(),
-                    },
-                },
-            )?;
+            // let db = SqliteDatabase::new("data");
+            // db.apply_mutation(
+            //     "test",
+            //     &Mutation::Modify {
+            //         credential: Credential {
+            //             id: "nothing".into(),
+            //             value: "nothing".into(),
+            //         },
+            //     },
+            // )?;
+            for _ in 0..100 {
+                println!("{}", new_cred_id());
+            }
         }
     }
 
