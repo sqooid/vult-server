@@ -84,7 +84,7 @@ mod test {
             .state::<Databases>()
             .expect("State databases");
         db.cache()
-            .add_mutation("unit", &Mutation::Delete { id: "blah".into() })
+            .add_mutations("unit", &[Mutation::Delete { id: "blah".into() }])
             .unwrap();
         let response = client
             .get(uri!(super::check_user_state))

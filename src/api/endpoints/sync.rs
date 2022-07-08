@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use log::{error, info, warn};
 use rocket::{response, serde::json::Json, State};
 use serde::{Deserialize, Serialize};
@@ -19,7 +21,8 @@ pub struct SyncRequest {
 
 #[derive(Debug, Serialize)]
 pub struct SyncResponse {
-    state: String,
+    status: String,
+    state_id: String,
     mutations: Option<Vec<Mutation>>,
     store: Option<Vec<Credential>>,
     id_changes: Option<Vec<(String, String)>>,
@@ -28,7 +31,8 @@ pub struct SyncResponse {
 impl SyncResponse {
     fn new() -> Self {
         Self {
-            state: String::new(),
+            status: String::new(),
+            state_id: String::new(),
             mutations: None,
             store: None,
             id_changes: None,
@@ -41,6 +45,18 @@ impl SyncResponse {
         if let Some(changes) = &mut self.id_changes {
             changes.push((id.into(), new_id.into()));
         }
+    }
+    fn set_status(&mut self, status: String) {
+        self.status = status;
+    }
+    fn set_mutations(&mut self, mutations: Vec<Mutation>) {
+        self.mutations = Some(mutations);
+    }
+    fn set_store(&mut self, store: Vec<Credential>) {
+        self.store = Some(store);
+    }
+    fn set_state_id(&mut self, state_id: String) {
+        self.state_id = state_id;
     }
 }
 
@@ -77,6 +93,53 @@ pub fn sync_user(
     );
 
     // Check state
+    if let Ok(state_exists) = db.cache().has_state(&alias, &data.state) {
+        if !state_exists {
+            if let Ok(state_id) = db.cache().add_mutations(&alias, &data.mutations) {
+                response.set_state_id(state_id);
+                if let Ok(store) = db.store().export_all(&alias) {
+                    info!("Exported store for user {}", &alias);
+                    response.set_store(store);
+                } else {
+                    error!("Failed to export store for user {}", &alias);
+                    response.set_status("failed".into());
+                }
+            } else {
+                error!("Failed to add mutations to cache for user {}", &alias);
+                response.set_status("failed".into());
+            }
+        } else {
+            if let Ok(mut remote_mutations) = db.cache().get_next_mutations(&alias, &data.state) {
+                let mut overriden_ids: HashSet<&str> = HashSet::new();
+                for id in data.mutations.iter().filter_map(|m| match m {
+                    Mutation::Delete { id } => Some(id),
+                    Mutation::Modify { credential } => Some(&credential.id),
+                    _ => None,
+                }) {
+                    overriden_ids.insert(id);
+                }
 
-    todo!()
+                remote_mutations.retain(|m| match m {
+                    Mutation::Add { credential: _ } => {
+                    warn!("Impossible state: credential modified/deleted locally without knowing about remote credential with same id");
+                    false
+                    },
+                    Mutation::Modify { credential } => !overriden_ids.contains(&credential.id as&str),
+                    Mutation::Delete { id } => !overriden_ids.contains(id as &str)
+                });
+
+                response.set_mutations(remote_mutations);
+            } else {
+                error!(
+                    "Failed to retrieve cached remote mutations for user {}",
+                    &alias
+                );
+                response.set_status("failed".into());
+            }
+        }
+    } else {
+        error!("Failed to read user state of {}", &alias);
+        response.set_status("failed".into());
+    }
+    Json(response)
 }
