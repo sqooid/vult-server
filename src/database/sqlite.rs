@@ -145,13 +145,13 @@ impl StoreDatabase for SqliteDatabase {
 }
 
 impl CacheDatabase for SqliteDatabase {
-    fn add_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<String> {
+    fn add_mutations(&self, alias: &str, mutations: &[Mutation]) -> GenericResult<String> {
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
             .as_millis();
         let id = time.to_string();
 
-        let mutation_blob = bincode::serialize(mutation)?;
+        let mutation_blob = bincode::serialize(mutations)?;
 
         let db = self.open_cache(alias)?;
         db.execute(
@@ -173,8 +173,8 @@ impl CacheDatabase for SqliteDatabase {
         })?;
 
         for mutation_blob in mutation_blob_iter.flatten() {
-            let mutation: Mutation = bincode::deserialize(&mutation_blob)?;
-            mutations.push(mutation);
+            let mut mutation: Vec<Mutation> = bincode::deserialize(&mutation_blob)?;
+            mutations.append(&mut mutation);
         }
 
         Ok(mutations)
@@ -188,5 +188,15 @@ impl CacheDatabase for SqliteDatabase {
             Ok(result)
         })?;
         Ok(iter.next().is_none())
+    }
+
+    fn has_state(&self, alias: &str, state: &str) -> GenericResult<bool> {
+        let db = self.open_cache(alias)?;
+        let mut statement = db.prepare("select id from Cache where id = ?")?;
+        match statement.query_row([state], |_| Ok(())) {
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
+            Ok(_) => Ok(true),
+            Err(e) => Err(e.into()),
+        }
     }
 }

@@ -18,7 +18,7 @@ impl Display for Config {
         write!(
             f,
             "{}",
-            serde_json::to_string_pretty(self).map_err(|e| std::fmt::Error)?
+            serde_json::to_string_pretty(self).map_err(|_| std::fmt::Error)?
         )
     }
 }

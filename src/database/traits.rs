@@ -20,11 +20,14 @@ pub trait StoreDatabase {
 }
 
 pub trait CacheDatabase {
-    /// Add a mutation to the cache of the user of `key`
+    /// Adds a list of mutations to the cache of the user of `key`
     ///
     /// Returns the `id` of the newly cached state
     /// which can be used to sync efficiently
-    fn add_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<String>;
+    fn add_mutations(&self, alias: &str, mutations: &[Mutation]) -> GenericResult<String>;
+
+    /// Check if cache contains state id
+    fn has_state(&self, alias: &str, state: &str) -> GenericResult<bool>;
 
     /// Get all mutations necessary to get to most up-to-date state from state `id`
     ///

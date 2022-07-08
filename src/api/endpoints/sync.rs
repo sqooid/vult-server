@@ -1,3 +1,4 @@
+use log::{error, info, warn};
 use rocket::{response, serde::json::Json, State};
 use serde::{Deserialize, Serialize};
 
@@ -44,21 +45,38 @@ impl SyncResponse {
 }
 
 #[get("/sync", data = "<data>")]
-pub fn sync_user(user: User, db: &State<Databases>, data: Json<SyncRequest>) -> Json<SyncResponse> {
-    // let User(alias) = user;
-    // let mut response = SyncResponse::new();
-    // data.mutations.retain_mut(
-    //     |mutation| match db.store().apply_mutation(&alias, &mutation) {
-    //         Ok(_) => true,
-    //         Err(Error::DuplicateId { id, new_id }) => {
-    //             if let Mutation::Add { credential } = mutation {
-    //                 credential.id = new_id;
-    //             }
-    //             response.add_id_change(&id, &new_id);
-    //             true
-    //         }
-    //         Err(Error::MissingItem { id: () })
-    //     },
-    // );
+pub fn sync_user(
+    user: User,
+    db: &State<Databases>,
+    mut data: Json<SyncRequest>,
+) -> Json<SyncResponse> {
+    let User(alias) = user;
+    info!("Syncing user {}", &alias);
+    let mut response = SyncResponse::new();
+
+    // Applying mutations
+    data.mutations.retain_mut(
+        |mutation| match db.store().apply_mutation(&alias, &mutation) {
+            Ok(_) => true,
+            Err(Error::DuplicateId { id, new_id }) => {
+                if let Mutation::Add { credential } = mutation {
+                    response.add_id_change(&id, &new_id);
+                    credential.id = new_id;
+                }
+                true
+            }
+            Err(Error::MissingItem { id }) => {
+                warn!("Item {} missing - skipped", &id);
+                false
+            }
+            Err(_) => {
+                error!("Item failed - skipped:\n{}", &mutation);
+                false
+            }
+        },
+    );
+
+    // Check state
+
     todo!()
 }

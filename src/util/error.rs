@@ -6,7 +6,8 @@ pub enum Error {
     MissingItem { id: String },
     Time { message: String },
     ExistingUser { message: String },
-    Unknown { message: String },
+    Database { error: rusqlite::Error },
+    Unknown { error: Box<dyn std::error::Error> },
     Config { message: String },
 }
 
@@ -18,8 +19,9 @@ impl Display for Error {
             }
             Self::MissingItem { id } => write!(f, "Missing item: {id}"),
             Self::Time { message } => write!(f, "Time error: {}", message),
-            Self::Unknown { message } => write!(f, "Error: {}", message),
+            Self::Unknown { error } => write!(f, "Error: {}", error),
             Self::ExistingUser { message } => write!(f, "Already existing user: {}", message),
+            Self::Database { error } => write!(f, "Database error: {}", error),
             Self::Config { message } => write!(f, "Config error: {}", message),
         }
     }
@@ -37,9 +39,7 @@ impl From<SystemTimeError> for Error {
 
 impl From<rusqlite::Error> for Error {
     fn from(e: rusqlite::Error) -> Self {
-        Self::Unknown {
-            message: e.to_string(),
-        }
+        Self::Database { error: e }
     }
 }
 
@@ -47,16 +47,14 @@ impl From<bincode::Error> for Error {
     fn from(e: bincode::Error) -> Self {
         Self::Unknown {
             // message: "Error serializing/deserializing bincode".into(),
-            message: e.to_string(),
+            error: e,
         }
     }
 }
 
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
-        Self::Unknown {
-            message: e.to_string(),
-        }
+        Self::Unknown { error: Box::new(e) }
     }
 }
 
