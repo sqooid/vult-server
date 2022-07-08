@@ -12,41 +12,31 @@ use config::{
     cli::{Cli, Commands},
     parse_config::Config,
 };
-use database::sqlite::SqliteDatabase;
-use util::id::new_cred_id;
-
-use crate::{
-    api::db_types::{Credential, Mutation},
-    database::traits::StoreDatabase,
-};
+use log::info;
 
 #[rocket::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli_config = Cli::parse();
-    // println!("{:?}", &cli_config);
+
+    pretty_env_logger::formatted_timed_builder()
+        .filter(
+            None,
+            match &cli_config.verbose {
+                true => log::LevelFilter::Info,
+                _ => log::LevelFilter::Warn,
+            },
+        )
+        .init();
 
     let config = Config::read_config(&cli_config.config)?;
-    // println!("{:?}", &config);
+    info!("Parsed config:\n{}", &config);
 
     match cli_config.command {
         Commands::Run => {
             launch_server(config).await?;
         }
         Commands::Test => {
-            println!("Testing stuff");
-            // let db = SqliteDatabase::new("data");
-            // db.apply_mutation(
-            //     "test",
-            //     &Mutation::Modify {
-            //         credential: Credential {
-            //             id: "nothing".into(),
-            //             value: "nothing".into(),
-            //         },
-            //     },
-            // )?;
-            for _ in 0..100 {
-                println!("{}", new_cred_id());
-            }
+            info!("Testing stuff");
         }
     }
 

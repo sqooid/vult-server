@@ -10,6 +10,10 @@ pub struct Cli {
     /// Path to configuration TOML file
     #[clap(global = true, short, long, default_value_t = String::from("./config.toml"))]
     pub config: String,
+
+    /// Verbose logging
+    #[clap(global = true, short, long)]
+    pub verbose: bool,
 }
 
 #[derive(Debug, Subcommand)]
