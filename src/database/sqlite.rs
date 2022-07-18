@@ -5,7 +5,7 @@ use rusqlite::params;
 
 use crate::api::db_types::{Credential, DbMutation, Mutation};
 use crate::util::error::Error;
-use crate::util::id::new_cred_id;
+use crate::util::id::random_b64;
 use crate::util::types::GenericResult;
 
 use super::traits::{CacheDatabase, StoreDatabase};
@@ -47,7 +47,7 @@ impl SqliteDatabase {
     fn open_cache(&self, alias: &str) -> GenericResult<rusqlite::Connection> {
         let db = self.open_db(alias)?;
         db.execute(
-            "create table if not exists Cache (id text primary key, mutation blob)",
+            "create table if not exists Cache (id text primary key, time integer, mutation blob)",
             [],
         )?;
         Ok(db)
@@ -67,7 +67,7 @@ impl StoreDatabase for SqliteDatabase {
                 _ => {
                     let mut new_id = String::new();
                     while {
-                        new_id = new_cred_id();
+                        new_id = random_b64(24);
                         db.execute(
                             "insert into Store values (?, ?)",
                             [&new_id, &credential.value],
@@ -148,16 +148,18 @@ impl CacheDatabase for SqliteDatabase {
     fn add_mutations(&self, alias: &str, mutations: &[Mutation]) -> GenericResult<String> {
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
-            .as_millis();
-        let id = time.to_string();
+            .as_nanos();
+        let id = random_b64(24);
 
-        let mutations = unsafe { *(mutations.as_ptr() as *const &[DbMutation]) };
-        let mutation_blob = bincode::serialize(mutations)?;
+        let mutations: &[DbMutation] = unsafe {
+            std::slice::from_raw_parts(mutations.as_ptr() as *const DbMutation, mutations.len())
+        };
+        let mutation_blob = bincode::serialize(&mutations)?;
 
         let db = self.open_cache(alias)?;
         db.execute(
-            "insert into Cache values (?, ?)",
-            params![id, mutation_blob],
+            "insert into Cache values (?, ?, ?)",
+            params![id, time as u64, mutation_blob],
         )?;
 
         Ok(id)
@@ -174,14 +176,7 @@ impl CacheDatabase for SqliteDatabase {
         })?;
 
         for mutation_blob in mutation_blob_iter.flatten() {
-            let mut mutation: Vec<DbMutation> = bincode::deserialize(&mutation_blob)?;
-            let mut mutation: Vec<Mutation> = unsafe {
-                Vec::from_raw_parts(
-                    mutation.as_mut_ptr() as *mut Mutation,
-                    mutation.len(),
-                    mutation.len(),
-                )
-            };
+            let mut mutation: Vec<Mutation> = bincode::deserialize(&mutation_blob)?;
             mutations.append(&mut mutation);
         }
 

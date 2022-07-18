@@ -3,6 +3,7 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename = "Mutation")]
 #[repr(C)]
 pub enum DbMutation {
     Add { credential: Credential },
