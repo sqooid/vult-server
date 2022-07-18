@@ -1,7 +1,7 @@
 use rand::RngCore;
 
-pub fn new_cred_id() -> String {
-    let mut id_array: [u8; 24] = [0; 24];
+pub fn random_b64(bytes: usize) -> String {
+    let mut id_array: Vec<u8> = vec![0; bytes];
     rand::thread_rng().fill_bytes(&mut id_array);
     base64::encode(&id_array)
 }
