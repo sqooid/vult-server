@@ -2,11 +2,39 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Mutation {
     Add { credential: Credential },
     Delete { id: String },
     Modify { credential: Credential },
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type")]
+pub enum ClientMutation {
+    Add { credential: Credential },
+    Delete { id: String },
+    Modify { credential: Credential },
+}
+
+impl From<Mutation> for ClientMutation {
+    fn from(m: Mutation) -> Self {
+        match m {
+            Mutation::Add { credential } => Self::Add { credential },
+            Mutation::Delete { id } => Self::Delete { id },
+            Mutation::Modify { credential } => Self::Modify { credential },
+        }
+    }
+}
+
+impl From<ClientMutation> for Mutation {
+    fn from(m: ClientMutation) -> Self {
+        match m {
+            ClientMutation::Add { credential } => Self::Add { credential },
+            ClientMutation::Delete { id } => Self::Delete { id },
+            ClientMutation::Modify { credential } => Self::Modify { credential },
+        }
+    }
 }
 
 impl Display for Mutation {
@@ -19,7 +47,7 @@ impl Display for Mutation {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Credential {
     pub id: String,
     pub value: String,
