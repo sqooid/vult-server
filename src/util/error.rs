@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Missing credential with id: {0}")]
-    MissingItem(String),
+    MissingId(String),
     #[error("User with alias {0} already exists")]
     ExistingUser(String),
     #[error("Internal server error")]

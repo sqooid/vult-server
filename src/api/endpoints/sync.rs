@@ -2,12 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::{Context, Result};
 use log::{error, info, warn};
-use rocket::{
-    http::Status,
-    response::{status},
-    serde::json::Json,
-    State,
-};
+use rocket::{http::Status, response::status, serde::json::Json, State};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -16,7 +11,7 @@ use crate::{
         guards::user::User,
     },
     database::traits::Databases,
-    util::{error::Error},
+    util::error::Error,
 };
 
 #[derive(Debug, Deserialize)]
@@ -87,12 +82,19 @@ fn sync_aux(
                 }
                 true
             }
-            Err(Error::MissingItem(id)) => {
-                warn!("Item {} missing - skipped", &id);
-                false
-            }
-            Err(_) => {
-                error!("Item failed - skipped:\n{}", &mutation);
+            Err(e) => {
+                if let Some(error) = e.downcast_ref::<Error>() {
+                    match error {
+                        Error::MissingId(id) => warn!(
+                            "Credential with id {} missing: modification/deletion skipped",
+                            id
+                        ),
+                        _ => error!("{:?}", &e),
+                    };
+                } else {
+                    error!("Credential {} failed", &mutation);
+                    error!("{:?}", &e);
+                }
                 false
             }
         },
@@ -352,6 +354,165 @@ mod test {
                 }
             }])
         );
+        assert!(body.store.is_none());
+        assert!(body.id_changes.is_none());
+    }
+
+    #[test]
+    fn missing_state() {
+        let config = init_test_config("test/sync/missing_state");
+        let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
+        let _init = client
+            .post("/init/upload")
+            .header(auth_header())
+            .body(
+                json!([
+                    {
+                        "id": "random",
+                        "value": "nothing"
+                    }
+                ])
+                .to_string(),
+            )
+            .dispatch();
+        let init_body: InitUploadResponse =
+            serde_json::from_str(&_init.into_string().unwrap()).unwrap();
+        let response = client
+            .post(uri!(super::sync_user))
+            .header(auth_header())
+            .body(
+                json!({
+                    "state": "asdfasdf",
+                    "mutations": [
+                        {
+                            "type": "Add",
+                            "credential":
+                            {
+                                "id": "something",
+                                "value": "nothing"
+                            }
+                        }
+                    ]
+                })
+                .to_string(),
+            )
+            .dispatch();
+        let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
+        println!("{:?}", &body);
+        assert!(!body.state_id.is_empty());
+        assert!(body.mutations.is_none());
+        assert_eq!(
+            body.store,
+            Some(vec![
+                Credential {
+                    id: "random".to_string(),
+                    value: "nothing".to_string()
+                },
+                Credential {
+                    id: "something".to_string(),
+                    value: "nothing".to_string()
+                }
+            ])
+        );
+        assert!(body.id_changes.is_none());
+    }
+
+    #[test]
+    fn duplicate_id() {
+        let config = init_test_config("test/sync/duplicate_id");
+        let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
+        let _init = client
+            .post("/init/upload")
+            .header(auth_header())
+            .body(
+                json!([
+                    {
+                        "id": "random",
+                        "value": "nothing"
+                    }
+                ])
+                .to_string(),
+            )
+            .dispatch();
+        let init_body: InitUploadResponse =
+            serde_json::from_str(&_init.into_string().unwrap()).unwrap();
+        let init_state_id = init_body.state_id.expect("Init body state id");
+        let response = client
+            .post(uri!(super::sync_user))
+            .header(auth_header())
+            .body(
+                json!({
+                    "state": &init_state_id,
+                    "mutations": [
+                        {
+                            "type": "Add",
+                            "credential":
+                            {
+                                "id": "random",
+                                "value": "nothing"
+                            }
+                        }
+                    ]
+                })
+                .to_string(),
+            )
+            .dispatch();
+        let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
+        println!("{:?}", &body);
+        assert!(!body.state_id.is_empty());
+        assert!(body.mutations.is_none());
+        assert!(body.store.is_none());
+        assert!(body.id_changes.unwrap().len() == 1);
+    }
+
+    #[test]
+    fn modify_missing() {
+        let config = init_test_config("test/sync/modify_missing");
+        let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
+        let _init = client
+            .post("/init/upload")
+            .header(auth_header())
+            .body(
+                json!([
+                    {
+                        "id": "random",
+                        "value": "nothing"
+                    }
+                ])
+                .to_string(),
+            )
+            .dispatch();
+        let init_body: InitUploadResponse =
+            serde_json::from_str(&_init.into_string().unwrap()).unwrap();
+        let init_state_id = init_body.state_id.expect("Init body state id");
+        let response = client
+            .post(uri!(super::sync_user))
+            .header(auth_header())
+            .body(
+                json!({
+                    "state": &init_state_id,
+                    "mutations": [
+                        {
+                            "type": "Modify",
+                            "credential":
+                            {
+                                "id": "missing",
+                                "value": "nothing"
+                            }
+                        },
+                        {
+                            "type": "Delete",
+                            "id": "missing"
+                        }
+                    ]
+                })
+                .to_string(),
+            )
+            .dispatch();
+        let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
+        println!("{:?}", &body);
+        assert!(!body.state_id.is_empty());
+        assert!(body.mutations.is_none());
         assert!(body.store.is_none());
         assert!(body.id_changes.is_none());
     }

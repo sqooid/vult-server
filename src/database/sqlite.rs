@@ -1,6 +1,7 @@
 use std::time::SystemTime;
 use std::{fs, path::PathBuf};
 
+use anyhow::{Context, Result};
 use rusqlite::params;
 
 use crate::api::db_types::{Credential, DbMutation, Mutation};
@@ -55,39 +56,82 @@ impl SqliteDatabase {
 }
 
 impl StoreDatabase for SqliteDatabase {
-    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<Option<String>> {
+    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> Result<Option<String>> {
         let db = self.open_store(alias)?;
 
         match mutation {
-            Mutation::Add { credential } => match db.execute(
-                "insert into Store values (?, ?)",
-                [&credential.id, &credential.value],
-            )? {
-                1 => Ok(None),
-                _ => {
-                    let mut new_id = String::new();
-                    while {
-                        new_id = random_b64(24);
-                        db.execute(
-                            "insert into Store values (?, ?)",
-                            [&new_id, &credential.value],
-                        )? == 0
-                    } {}
-                    Ok(Some(new_id))
+            Mutation::Add { credential } => {
+                let result = db.execute(
+                    "insert into Store values (?, ?)",
+                    [&credential.id, &credential.value],
+                );
+                match result {
+                    Ok(_) => Ok(None),
+                    Err(rusqlite::Error::SqliteFailure(e, _)) => {
+                        if e.extended_code == 1555 {
+                            let mut new_id;
+                            while {
+                                new_id = random_b64(24);
+                                match db.execute(
+                                    "insert into Store values (?, ?)",
+                                    [&new_id, &credential.value],
+                                ) {
+                                    Ok(_) => false,
+                                    Err(rusqlite::Error::SqliteFailure(e, _)) => {
+                                        e.extended_code == 1555
+                                    }
+                                    Err(_) => {
+                                        result.context("Failed to assign new id to credental with duplicated id")?;
+                                        unreachable!()
+                                    }
+                                }
+                            } {}
+                            Ok(Some(new_id))
+                        } else {
+                            result.with_context(|| {
+                                format!("Failed to add credential to store {}", &credential)
+                            })?;
+                            unreachable!()
+                        }
+                    }
+                    Err(_) => {
+                        result.with_context(|| {
+                            format!("Failed to add credential to store {}", &credential)
+                        })?;
+                        unreachable!()
+                    }
                 }
-            },
+            }
 
-            Mutation::Delete { id } => match db.execute("delete from Store where id = ?", [id])? {
-                1 => Ok(None),
-                _ => Err(Error::MissingItem(id.to_owned())),
-            },
-            Mutation::Modify { credential } => match db.execute(
-                "update Store set value = ? where id = ?",
-                [&credential.value, &credential.id],
-            )? {
-                1 => Ok(None),
-                _ => Err(Error::MissingItem(credential.id.to_owned())),
-            },
+            Mutation::Delete { id } => {
+                let result = db.execute("delete from Store where id = ?", [id]);
+                match result {
+                    Ok(1) => Ok(None),
+                    Ok(_) => Err(Error::MissingId(id.to_owned()).into()),
+                    Err(_) => {
+                        result.with_context(|| {
+                            format!("Failed to delete credential with id {}", id)
+                        })?;
+                        unreachable!()
+                    }
+                }
+            }
+            Mutation::Modify { credential } => {
+                let result = db.execute(
+                    "update Store set value = ? where id = ?",
+                    [&credential.value, &credential.id],
+                );
+                match result {
+                    Ok(1) => Ok(None),
+                    Ok(_) => Err(Error::MissingId(credential.id.to_owned()).into()),
+                    Err(_) => {
+                        result.with_context(|| {
+                            format!("Failed to modify credential {}", credential)
+                        })?;
+                        unreachable!()
+                    }
+                }
+            }
         }
     }
 
