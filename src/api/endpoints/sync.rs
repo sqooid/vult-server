@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use anyhow::{Context, Result};
 use log::{error, info, warn};
 use rocket::{
     http::Status,
@@ -53,16 +54,18 @@ pub fn sync_user(
     let User(alias) = user;
     info!("Syncing user {}", &alias);
 
-    if let Ok(response) = sync_aux(&alias, db, data) {
-        status::Custom(Status::Ok, Json(response))
-    } else {
-        status::Custom(
-            Status::InternalServerError,
-            Json(SyncResponse {
-                status: "failed".into(),
-                ..Default::default()
-            }),
-        )
+    match sync_aux(&alias, db, data) {
+        Ok(response) => status::Custom(Status::Ok, Json(response)),
+        Err(e) => {
+            error!("Failed to sync user\n{:?}", e);
+            status::Custom(
+                Status::InternalServerError,
+                Json(SyncResponse {
+                    status: "failed".into(),
+                    ..Default::default()
+                }),
+            )
+        }
     }
 }
 
@@ -70,21 +73,21 @@ fn sync_aux(
     alias: &str,
     db: &State<Databases>,
     mut data: Json<SyncRequest>,
-) -> GenericResult<SyncResponse> {
+) -> Result<SyncResponse> {
     let mut response = SyncResponse::default();
 
     // Applying mutations
     data.mutations.retain_mut(
         |mutation| match db.store().apply_mutation(&alias, &mutation) {
-            Ok(_) => true,
-            Err(Error::DuplicateId { id, new_id }) => {
+            Ok(None) => true,
+            Ok(Some(id)) => {
                 if let Mutation::Add { credential } = mutation {
-                    response.add_id_change(&id, &new_id);
-                    credential.id = new_id;
+                    response.add_id_change(&credential.id, &id);
+                    credential.id = id;
                 }
                 true
             }
-            Err(Error::MissingItem { id }) => {
+            Err(Error::MissingItem(id)) => {
                 warn!("Item {} missing - skipped", &id);
                 false
             }
@@ -96,37 +99,36 @@ fn sync_aux(
     );
 
     // Check state
-    match db.cache().has_state(&alias, &data.state) {
-        Ok(state_exists) => {
-            // Return whole store
-            if !state_exists {
-                match db.store().export_all(&alias) {
-                    Ok(store) => {
-                        info!("Exported store for user {}", &alias);
-                        response.store = Some(store);
-                    }
-                    Err(e) => {
-                        error!("Failed to export store for user {}", &alias);
-                        return Err(e);
-                    }
-                }
-            } else {
-                match db.cache().get_next_mutations(&alias, &data.state) {
-                    Ok(mut remote_mutations) => {
-                        println!("{:?}", &remote_mutations);
-                        // Just apply and return state if most recent
-                        if !remote_mutations.is_empty() {
-                            // Otherwise perform filters
-                            let mut overriden_ids: HashSet<&str> = HashSet::new();
-                            for id in data.mutations.iter().filter_map(|m| match m {
-                                Mutation::Delete { id } => Some(id),
-                                Mutation::Modify { credential } => Some(&credential.id),
-                                _ => None,
-                            }) {
-                                overriden_ids.insert(id);
-                            }
+    let state_exists = db
+        .cache()
+        .has_state(&alias, &data.state)
+        .context(format!("Failed to check user state for user {}", alias))?;
+    // Return whole store
+    if !state_exists {
+        let store = db
+            .store()
+            .export_all(&alias)
+            .with_context(|| format!("Failed to export store for user {}", alias))?;
+        info!("Exported store for user {}", &alias);
+        response.store = Some(store);
+    } else {
+        let mut remote_mutations = db
+            .cache()
+            .get_next_mutations(&alias, &data.state)
+            .with_context(|| format!("Failed to get next mutations for user {}", alias))?;
+        // Just apply and return state if most recent
+        if !remote_mutations.is_empty() {
+            // Otherwise perform filters
+            let mut overriden_ids: HashSet<&str> = HashSet::new();
+            for id in data.mutations.iter().filter_map(|m| match m {
+                Mutation::Delete { id } => Some(id),
+                Mutation::Modify { credential } => Some(&credential.id),
+                _ => None,
+            }) {
+                overriden_ids.insert(id);
+            }
 
-                            remote_mutations.retain(|m| match m {
+            remote_mutations.retain(|m| match m {
                     Mutation::Add { credential: _ } => {
                     warn!("Impossible state: credential modified/deleted locally without knowing about remote credential with same id");
                     false
@@ -135,28 +137,15 @@ fn sync_aux(
                     Mutation::Delete { id } => !overriden_ids.contains(id as &str)
                 });
 
-                            response.mutations = Some(remote_mutations);
-                        }
-                    }
-                    Err(e) => {
-                        error!(
-                            "Failed to retrieve cached remote mutations for user {}",
-                            &alias
-                        );
-                        return Err(e);
-                    }
-                }
-            }
-            if let Ok(state_id) = db.cache().add_mutations(&alias, &data.mutations) {
-                response.state_id = state_id;
-                response.status = "success".into();
-            }
-        }
-        Err(e) => {
-            error!("Failed to read user state of {}", &alias);
-            return Err(e);
+            response.mutations = Some(remote_mutations);
         }
     }
+    let state_id = db
+        .cache()
+        .add_mutations(&alias, &data.mutations)
+        .with_context(|| format!("Failed to add mutations for user {}", alias))?;
+    response.state_id = state_id;
+    response.status = "success".into();
 
     Ok(response)
 }

@@ -7,7 +7,7 @@ pub trait StoreDatabase {
     /// Apply a mutation to the store of the user of `key`
     ///
     /// Returns true if the mutation resulted in a change, false if no changes were made
-    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<()>;
+    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<Option<String>>;
 
     /// Export the entire store of the user of `key` as a list of credentials
     fn export_all(&self, alias: &str) -> GenericResult<Vec<Credential>>;

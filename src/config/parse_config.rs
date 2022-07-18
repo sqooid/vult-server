@@ -1,5 +1,6 @@
 use std::{fmt::Display, fs::File, io::Read, path::Path};
 
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::util::{error::Error, types::GenericResult};
@@ -38,18 +39,17 @@ pub struct User {
 }
 
 impl Config {
-    pub fn read_config<T: AsRef<Path> + Display>(path: T) -> GenericResult<Config> {
-        let mut config_file = File::open(&path).map_err(|_e| Error::Config {
-            message: format!("Failed to find config file {path}"),
-        })?;
+    pub fn read_config<T: AsRef<Path> + Display>(path: T) -> Result<Config> {
+        let mut config_file = File::open(&path)
+            .map_err(|e| Error::Config(e.into()))
+            .with_context(|| format!("Failed to open config at path {}", &path))?;
         let mut contents = String::new();
         config_file
             .read_to_string(&mut contents)
-            .map_err(|_e| Error::Config {
-                message: format!("Failed to read config file {path}"),
-            })?;
+            .map_err(|_e| Error::Config(_e.into()))
+            .context("Failed to read config file")?;
 
-        let parsed = toml::from_str(&contents)?;
+        let parsed = toml::from_str(&contents).context("Failed to parse config file")?;
 
         Ok(parsed)
     }

@@ -55,7 +55,7 @@ impl SqliteDatabase {
 }
 
 impl StoreDatabase for SqliteDatabase {
-    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<()> {
+    fn apply_mutation(&self, alias: &str, mutation: &Mutation) -> GenericResult<Option<String>> {
         let db = self.open_store(alias)?;
 
         match mutation {
@@ -63,7 +63,7 @@ impl StoreDatabase for SqliteDatabase {
                 "insert into Store values (?, ?)",
                 [&credential.id, &credential.value],
             )? {
-                1 => Ok(()),
+                1 => Ok(None),
                 _ => {
                     let mut new_id = String::new();
                     while {
@@ -73,25 +73,20 @@ impl StoreDatabase for SqliteDatabase {
                             [&new_id, &credential.value],
                         )? == 0
                     } {}
-                    Err(Error::DuplicateId {
-                        id: credential.id.to_owned(),
-                        new_id: new_id,
-                    })
+                    Ok(Some(new_id))
                 }
             },
 
             Mutation::Delete { id } => match db.execute("delete from Store where id = ?", [id])? {
-                1 => Ok(()),
-                _ => Err(Error::MissingItem { id: id.to_owned() }),
+                1 => Ok(None),
+                _ => Err(Error::MissingItem(id.to_owned())),
             },
             Mutation::Modify { credential } => match db.execute(
                 "update Store set value = ? where id = ?",
                 [&credential.value, &credential.id],
             )? {
-                1 => Ok(()),
-                _ => Err(Error::MissingItem {
-                    id: credential.id.to_owned(),
-                }),
+                1 => Ok(None),
+                _ => Err(Error::MissingItem(credential.id.to_owned())),
             },
         }
     }
@@ -120,9 +115,7 @@ impl StoreDatabase for SqliteDatabase {
 
         let mut statement = db.prepare("select * from Store limit 1")?;
         if statement.exists([])? {
-            return Err(Error::ExistingUser {
-                message: format!("User with alias: {alias} already exists"),
-            });
+            return Err(Error::ExistingUser(alias.to_string()));
         }
 
         let mut statement = db.prepare("insert into Store values (?, ?)")?;
