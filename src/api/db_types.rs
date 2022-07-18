@@ -3,7 +3,8 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub enum Mutation {
+#[repr(C)]
+pub enum DbMutation {
     Add { credential: Credential },
     Delete { id: String },
     Modify { credential: Credential },
@@ -11,29 +12,22 @@ pub enum Mutation {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
-pub enum ClientMutation {
+#[repr(C)]
+pub enum Mutation {
     Add { credential: Credential },
     Delete { id: String },
     Modify { credential: Credential },
 }
 
-impl From<Mutation> for ClientMutation {
-    fn from(m: Mutation) -> Self {
-        match m {
-            Mutation::Add { credential } => Self::Add { credential },
-            Mutation::Delete { id } => Self::Delete { id },
-            Mutation::Modify { credential } => Self::Modify { credential },
-        }
+impl From<DbMutation> for Mutation {
+    fn from(m: DbMutation) -> Self {
+        unsafe { std::mem::transmute::<DbMutation, Mutation>(m) }
     }
 }
 
-impl From<ClientMutation> for Mutation {
-    fn from(m: ClientMutation) -> Self {
-        match m {
-            ClientMutation::Add { credential } => Self::Add { credential },
-            ClientMutation::Delete { id } => Self::Delete { id },
-            ClientMutation::Modify { credential } => Self::Modify { credential },
-        }
+impl From<Mutation> for DbMutation {
+    fn from(m: Mutation) -> Self {
+        unsafe { std::mem::transmute::<Mutation, DbMutation>(m) }
     }
 }
 
