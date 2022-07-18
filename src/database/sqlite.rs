@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 
 use rusqlite::params;
 
-use crate::api::db_types::{Credential, Mutation};
+use crate::api::db_types::{Credential, DbMutation, Mutation};
 use crate::util::error::Error;
 use crate::util::id::new_cred_id;
 use crate::util::types::GenericResult;
@@ -151,6 +151,7 @@ impl CacheDatabase for SqliteDatabase {
             .as_millis();
         let id = time.to_string();
 
+        let mutations = unsafe { *(mutations.as_ptr() as *const &[DbMutation]) };
         let mutation_blob = bincode::serialize(mutations)?;
 
         let db = self.open_cache(alias)?;
@@ -173,7 +174,14 @@ impl CacheDatabase for SqliteDatabase {
         })?;
 
         for mutation_blob in mutation_blob_iter.flatten() {
-            let mut mutation: Vec<Mutation> = bincode::deserialize(&mutation_blob)?;
+            let mut mutation: Vec<DbMutation> = bincode::deserialize(&mutation_blob)?;
+            let mut mutation: Vec<Mutation> = unsafe {
+                Vec::from_raw_parts(
+                    mutation.as_mut_ptr() as *mut Mutation,
+                    mutation.len(),
+                    mutation.len(),
+                )
+            };
             mutations.append(&mut mutation);
         }
 
