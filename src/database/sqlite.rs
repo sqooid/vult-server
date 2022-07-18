@@ -162,14 +162,20 @@ impl CacheDatabase for SqliteDatabase {
         let mut mutations: Vec<Mutation> = Vec::new();
 
         let db = self.open_cache(alias)?;
-        let mut statement = db.prepare("select * from Cache where id > ?")?;
+        let mut statement = db.prepare(
+            "select mutation from Cache where time > (select time from Cache where id = ?)",
+        )?;
         let mutation_blob_iter = statement.query_map([id], |row| {
-            let mutation: Vec<u8> = row.get(1)?;
+            let mutation: Vec<u8> = row.get(0)?;
             Ok(mutation)
         })?;
 
         for mutation_blob in mutation_blob_iter.flatten() {
-            let mut mutation: Vec<Mutation> = bincode::deserialize(&mutation_blob)?;
+            let mutation: Vec<DbMutation> = bincode::deserialize(&mutation_blob)?;
+            let mut ptr = std::mem::ManuallyDrop::new(mutation);
+            let mut mutation: Vec<Mutation> = unsafe {
+                Vec::from_raw_parts(ptr.as_mut_ptr() as *mut Mutation, ptr.len(), ptr.len())
+            };
             mutations.append(&mut mutation);
         }
 

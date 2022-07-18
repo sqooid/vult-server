@@ -105,6 +105,7 @@ fn sync_aux(
         .context(format!("Failed to check user state for user {}", alias))?;
     // Return whole store
     if !state_exists {
+        info!("State id not found, exporting entire store");
         let store = db
             .store()
             .export_all(&alias)
@@ -112,12 +113,14 @@ fn sync_aux(
         info!("Exported store for user {}", &alias);
         response.store = Some(store);
     } else {
+        info!("State id found, getting remote mutations");
         let mut remote_mutations = db
             .cache()
             .get_next_mutations(&alias, &data.state)
             .with_context(|| format!("Failed to get next mutations for user {}", alias))?;
         // Just apply and return state if most recent
         if !remote_mutations.is_empty() {
+            info!("Found new remote state, filtering new mutations");
             // Otherwise perform filters
             let mut overriden_ids: HashSet<&str> = HashSet::new();
             for id in data.mutations.iter().filter_map(|m| match m {
@@ -129,15 +132,21 @@ fn sync_aux(
             }
 
             remote_mutations.retain(|m| match m {
-                    Mutation::Add { credential: _ } => {
-                    warn!("Impossible state: credential modified/deleted locally without knowing about remote credential with same id");
-                    false
+                    Mutation::Add { credential } => {
+                        if overriden_ids.contains(&credential.id as &str) {
+                            warn!("Impossible state: credential modified/deleted locally without knowing about remote credential with same id");
+                            false
+                    } else {
+                        true
+                    }
                     },
-                    Mutation::Modify { credential } => !overriden_ids.contains(&credential.id as&str),
+                    Mutation::Modify { credential } => !overriden_ids.contains(&credential.id as &str),
                     Mutation::Delete { id } => !overriden_ids.contains(id as &str)
                 });
 
             response.mutations = Some(remote_mutations);
+        } else {
+            info!("Already have most recent state");
         }
     }
     let state_id = db
@@ -158,7 +167,11 @@ mod test {
     use serde_json::json;
 
     use crate::{
-        api::{endpoints::init_upload::InitUploadResponse, server::build_server},
+        api::{
+            db_types::{Credential, Mutation},
+            endpoints::init_upload::InitUploadResponse,
+            server::build_server,
+        },
         config::parse_config::{Config, User},
     };
 
@@ -218,6 +231,127 @@ mod test {
         let body: SyncResponse = serde_json::from_str(&body_str).unwrap();
         assert!(!body.state_id.is_empty());
         assert!(body.mutations.is_none());
+        assert!(body.store.is_none());
+        assert!(body.id_changes.is_none());
+    }
+
+    #[test]
+    fn most_recent() {
+        let config = init_test_config("test/sync/most_recent");
+        let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
+        let _init = client
+            .post("/init/upload")
+            .header(auth_header())
+            .body(json!([]).to_string())
+            .dispatch();
+        let init_body: InitUploadResponse =
+            serde_json::from_str(&_init.into_string().unwrap()).unwrap();
+        let init_state_id = init_body.state_id.expect("Init body state id");
+        let first_response = client
+            .post(uri!(super::sync_user))
+            .header(auth_header())
+            .body(
+                json!({
+                    "state": init_state_id,
+                    "mutations": [
+                        {
+                            "type": "Add",
+                            "credential":{
+                                "id": "random",
+                                "value": "nothing"}
+                        }
+                    ]
+                })
+                .to_string(),
+            )
+            .dispatch();
+        let first_body: SyncResponse =
+            serde_json::from_str(&first_response.into_string().unwrap()).unwrap();
+        let response = client
+            .post(uri!(super::sync_user))
+            .header(auth_header())
+            .body(
+                json!({
+                    "state": first_body.state_id,
+                    "mutations": [
+                        {
+                            "type": "Add",
+                            "credential":{
+                                "id": "something",
+                                "value": "nothing"}
+                        }
+                    ]
+                })
+                .to_string(),
+            )
+            .dispatch();
+        let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
+        assert!(!body.state_id.is_empty());
+        assert!(body.mutations.is_none());
+        assert!(body.store.is_none());
+        assert!(body.id_changes.is_none());
+    }
+
+    #[test]
+    fn not_recent() {
+        let config = init_test_config("test/sync/not_recent");
+        let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
+        let _init = client
+            .post("/init/upload")
+            .header(auth_header())
+            .body(json!([]).to_string())
+            .dispatch();
+        let init_body: InitUploadResponse =
+            serde_json::from_str(&_init.into_string().unwrap()).unwrap();
+        let init_state_id = init_body.state_id.expect("Init body state id");
+        let _first_response = client
+            .post(uri!(super::sync_user))
+            .header(auth_header())
+            .body(
+                json!({
+                    "state": &init_state_id,
+                    "mutations": [
+                        {
+                            "type": "Add",
+                            "credential":{
+                                "id": "random",
+                                "value": "nothing"}
+                        }
+                    ]
+                })
+                .to_string(),
+            )
+            .dispatch();
+        let response = client
+            .post(uri!(super::sync_user))
+            .header(auth_header())
+            .body(
+                json!({
+                    "state": &init_state_id,
+                    "mutations": [
+                        {
+                            "type": "Add",
+                            "credential":{
+                                "id": "something",
+                                "value": "nothing"}
+                        }
+                    ]
+                })
+                .to_string(),
+            )
+            .dispatch();
+        let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
+        println!("{:?}", &body);
+        assert!(!body.state_id.is_empty());
+        assert_eq!(
+            body.mutations,
+            Some(vec![Mutation::Add {
+                credential: Credential {
+                    id: "random".to_string(),
+                    value: "nothing".to_string()
+                }
+            }])
+        );
         assert!(body.store.is_none());
         assert!(body.id_changes.is_none());
     }
