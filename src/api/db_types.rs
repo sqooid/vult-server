@@ -15,8 +15,11 @@ pub enum DbMutation {
 #[serde(tag = "type")]
 #[repr(C)]
 pub enum Mutation {
+    #[serde(rename = "add")]
     Add { credential: Credential },
+    #[serde(rename = "delete")]
     Delete { id: String },
+    #[serde(rename = "modify")]
     Modify { credential: Credential },
 }
 

@@ -218,7 +218,7 @@ mod test {
                     "state": init_state_id,
                     "mutations": [
                         {
-                            "type": "Add",
+                            "type": "add",
                             "credential":{
                                 "id": "random",
                                 "value": "nothing"}
@@ -257,7 +257,7 @@ mod test {
                     "state": init_state_id,
                     "mutations": [
                         {
-                            "type": "Add",
+                            "type": "add",
                             "credential":{
                                 "id": "random",
                                 "value": "nothing"}
@@ -277,7 +277,7 @@ mod test {
                     "state": first_body.state_id,
                     "mutations": [
                         {
-                            "type": "Add",
+                            "type": "add",
                             "credential":{
                                 "id": "something",
                                 "value": "nothing"}
@@ -314,7 +314,7 @@ mod test {
                     "state": &init_state_id,
                     "mutations": [
                         {
-                            "type": "Add",
+                            "type": "add",
                             "credential":{
                                 "id": "random",
                                 "value": "nothing"}
@@ -332,7 +332,7 @@ mod test {
                     "state": &init_state_id,
                     "mutations": [
                         {
-                            "type": "Add",
+                            "type": "add",
                             "credential":{
                                 "id": "something",
                                 "value": "nothing"}
@@ -385,7 +385,7 @@ mod test {
                     "state": "asdfasdf",
                     "mutations": [
                         {
-                            "type": "Add",
+                            "type": "add",
                             "credential":
                             {
                                 "id": "something",
@@ -445,7 +445,7 @@ mod test {
                     "state": &init_state_id,
                     "mutations": [
                         {
-                            "type": "Add",
+                            "type": "add",
                             "credential":
                             {
                                 "id": "random",
@@ -493,7 +493,7 @@ mod test {
                     "state": &init_state_id,
                     "mutations": [
                         {
-                            "type": "Modify",
+                            "type": "modify",
                             "credential":
                             {
                                 "id": "missing",
@@ -501,7 +501,7 @@ mod test {
                             }
                         },
                         {
-                            "type": "Delete",
+                            "type": "delete",
                             "id": "missing"
                         }
                     ]
