@@ -26,7 +26,7 @@ pub trait CacheDatabase {
     ///
     /// Returns the `id` of the newly cached state
     /// which can be used to sync efficiently
-    fn add_mutations(&self, alias: &str, mutations: &[Mutation]) -> GenericResult<String>;
+    fn add_mutations(&self, alias: &str, mutations: &[Mutation]) -> Result<String>;
 
     /// Check if cache contains state id
     fn has_state(&self, alias: &str, state: &str) -> GenericResult<bool>;

@@ -182,11 +182,10 @@ impl StoreDatabase for SqliteDatabase {
 }
 
 impl CacheDatabase for SqliteDatabase {
-    fn add_mutations(&self, alias: &str, mutations: &[Mutation]) -> GenericResult<String> {
+    fn add_mutations(&self, alias: &str, mutations: &[Mutation]) -> Result<String> {
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
             .as_nanos();
-        let id = random_b64(24);
 
         let mutations: &[DbMutation] = unsafe {
             std::slice::from_raw_parts(mutations.as_ptr() as *const DbMutation, mutations.len())
@@ -194,10 +193,30 @@ impl CacheDatabase for SqliteDatabase {
         let mutation_blob = bincode::serialize(&mutations)?;
 
         let db = self.open_cache(alias)?;
-        db.execute(
-            "insert into Cache values (?, ?, ?)",
-            params![id, time as u64, mutation_blob],
-        )?;
+
+        let mut id;
+        while {
+            id = random_b64(24);
+            let result = db.execute(
+                "insert into Cache values (?, ?, ?)",
+                params![id, time as u64, mutation_blob],
+            );
+            match &result {
+                Ok(_) => false,
+                Err(rusqlite::Error::SqliteFailure(e, _)) => {
+                    if e.extended_code == 1555 {
+                        true
+                    } else {
+                        result.context("Failed to add mutations to database")?;
+                        unreachable!();
+                    }
+                }
+                _ => {
+                    result.context("Failed to add mutations to database")?;
+                    unreachable!();
+                }
+            }
+        } {}
 
         Ok(id)
     }
