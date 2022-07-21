@@ -89,12 +89,12 @@ fn sync_aux(
                             "Credential with id {} missing: modification/deletion skipped",
                             id
                         ),
-                        _ => error!("{:?}", &e),
+                        _ => {
+                            error!("{:?} failed to apply: skipped", mutation);
+                            error!("{:?}", &e)
+                        }
                     };
-                } else {
-                    error!("Credential {} failed", &mutation);
-                    error!("{:?}", &e);
-                }
+                };
                 false
             }
         },
@@ -123,16 +123,19 @@ fn sync_aux(
         // Just apply and return state if most recent
         if !remote_mutations.is_empty() {
             info!("Found new remote state, filtering new mutations");
-            // Otherwise perform filters
-            let mut overriden_ids: HashSet<&str> = HashSet::new();
-            for id in data.mutations.iter().filter_map(|m| match m {
-                Mutation::Delete { id } => Some(id),
-                Mutation::Modify { credential } => Some(&credential.id),
-                _ => None,
-            }) {
-                overriden_ids.insert(id);
-            }
 
+            // Otherwise perform filters
+            // Filter self-overriding local mutations
+            let mut overriden_ids: HashSet<String> = HashSet::new();
+            data.mutations.retain(|m| {
+                overriden_ids.insert(match m {
+                    Mutation::Add { credential } => credential.id.to_owned(),
+                    Mutation::Delete { id } => id.to_owned(),
+                    Mutation::Modify { credential } => credential.id.to_owned(),
+                })
+            });
+
+            // Filter out remote mutations for return
             remote_mutations.retain(|m| match m {
                     Mutation::Add { credential } => {
                         if overriden_ids.contains(&credential.id as &str) {
@@ -503,6 +506,73 @@ mod test {
                         {
                             "type": "delete",
                             "id": "missing"
+                        }
+                    ]
+                })
+                .to_string(),
+            )
+            .dispatch();
+        let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
+        println!("{:?}", &body);
+        assert!(!body.state_id.is_empty());
+        assert!(body.mutations.is_none());
+        assert!(body.store.is_none());
+        assert!(body.id_changes.is_none());
+    }
+
+    #[test]
+    fn remote_overriden() {
+        let config = init_test_config("test/sync/remote_overriden");
+        let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
+        let _init = client
+            .post("/init/upload")
+            .header(auth_header())
+            .body(
+                json!([
+                    {
+                        "id": "random",
+                        "value": "nothing"
+                    }
+                ])
+                .to_string(),
+            )
+            .dispatch();
+        let init_body: InitUploadResponse =
+            serde_json::from_str(&_init.into_string().unwrap()).unwrap();
+        let init_state_id = init_body.state_id.expect("Init body state id");
+        let _first_response = client
+            .post(uri!(super::sync_user))
+            .header(auth_header())
+            .body(
+                json!({
+                    "state": &init_state_id,
+                    "mutations": [
+                        {
+                            "type": "add",
+                            "credential":
+                            {
+                                "id": "blah",
+                                "value": "nothing"
+                            }
+                        }
+                    ]
+                })
+                .to_string(),
+            );
+        let response = client
+            .post(uri!(super::sync_user))
+            .header(auth_header())
+            .body(
+                json!({
+                    "state": &init_state_id,
+                    "mutations": [
+                        {
+                            "type": "modify",
+                            "credential":
+                            {
+                                "id": "blah",
+                                "value": "stuff"
+                            }
                         }
                     ]
                 })
