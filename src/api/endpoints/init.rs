@@ -17,8 +17,8 @@ pub struct InitResponse {
     pub status: String,
 }
 
-#[get("/user/init", data = "<data>")]
-pub fn check_user_state(
+#[post("/user/init", data = "<data>")]
+pub fn initialize_user(
     user: User,
     db: &State<Databases>,
     data: Json<InitRequest>,
@@ -103,7 +103,7 @@ mod test {
         let config = init_test_config("test/init/invalid_key");
         let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
         let response = client
-            .get(uri!(super::check_user_state))
+            .post(uri!(super::initialize_user))
             .header(Header::new("Authentication", "random"))
             .dispatch();
         assert_eq!(response.status(), Status::NotFound);
@@ -113,7 +113,7 @@ mod test {
     fn missing_header() {
         let config = init_test_config("test/init/missing_header");
         let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
-        let response = client.get(uri!(super::check_user_state)).dispatch();
+        let response = client.post(uri!(super::initialize_user)).dispatch();
         assert_eq!(response.status(), Status::BadRequest);
     }
 
@@ -122,7 +122,7 @@ mod test {
         let config = init_test_config("test/init/ready");
         let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
         let response = client
-            .get(uri!(super::check_user_state))
+            .post(uri!(super::initialize_user))
             .header(Header::new("Authentication", "unit"))
             .body(json!({"salt": "somesalt"}).to_string())
             .dispatch();
@@ -136,12 +136,12 @@ mod test {
         let config = init_test_config("test/init/taken");
         let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
         let _initial_response = client
-            .get(uri!(super::check_user_state))
+            .post(uri!(super::initialize_user))
             .header(Header::new("Authentication", "unit"))
             .body(json!({"salt": "somesalt"}).to_string())
             .dispatch();
         let response = client
-            .get(uri!(super::check_user_state))
+            .post(uri!(super::initialize_user))
             .header(Header::new("Authentication", "unit"))
             .body(json!({"salt": "somesalt"}).to_string())
             .dispatch();
