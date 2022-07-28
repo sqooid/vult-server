@@ -1,4 +1,5 @@
 use crate::{api::guards::user::User, database::traits::Databases, util::error::Error};
+use log::{info, warn};
 use rocket::{http::Status, response::status, serde::json::Json, State};
 use serde::{Deserialize, Serialize};
 
@@ -13,13 +14,16 @@ pub fn get_user(user: User, db: &State<Databases>) -> status::Custom<Json<UserIm
     let User(alias) = user;
     let result = db.salt.get_salt(&alias);
     match result {
-        Ok(salt) => status::Custom(
-            Status::Ok,
-            Json(UserImportResponse {
-                status: "success".into(),
-                salt: Some(salt),
-            }),
-        ),
+        Ok(salt) => {
+            info!("Provided salt for user {}", &alias);
+            status::Custom(
+                Status::Ok,
+                Json(UserImportResponse {
+                    status: "success".into(),
+                    salt: Some(salt),
+                }),
+            )
+        }
         Err(e) => {
             let error_response = status::Custom(
                 Status::InternalServerError,
@@ -30,13 +34,16 @@ pub fn get_user(user: User, db: &State<Databases>) -> status::Custom<Json<UserIm
             );
             if let Some(e) = e.downcast_ref::<Error>() {
                 match e {
-                    Error::UninitializedUser(_) => status::Custom(
-                        Status::Conflict,
-                        Json(UserImportResponse {
-                            status: "uninitialized".into(),
-                            salt: None,
-                        }),
-                    ),
+                    Error::UninitializedUser(_) => {
+                        warn!("Failed to provided salt for uninitialized user {}", &alias);
+                        status::Custom(
+                            Status::Conflict,
+                            Json(UserImportResponse {
+                                status: "uninitialized".into(),
+                                salt: None,
+                            }),
+                        )
+                    }
                     _ => {
                         error!("Failed to import user: {:?}", e);
                         error_response

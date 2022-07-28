@@ -1,7 +1,7 @@
 use crate::util::error::Error;
 use crate::{api::guards::user::User, database::traits::Databases};
 use anyhow::Result;
-use log::error;
+use log::{error, info, warn};
 use rocket::response::status;
 use rocket::serde::json::Json;
 use rocket::{http::Status, State};
@@ -26,18 +26,24 @@ pub fn initialize_user(
     let User(alias) = user;
     let result = add_salt_aux(db, &alias, &data.salt);
     match result {
-        Ok(true) => status::Custom(
-            Status::Ok,
-            Json(InitResponse {
-                status: "success".to_string(),
-            }),
-        ),
-        Ok(false) => status::Custom(
-            Status::Conflict,
-            Json(InitResponse {
-                status: "existing".to_string(),
-            }),
-        ),
+        Ok(true) => {
+            info!("Initialized user {}", &alias);
+            status::Custom(
+                Status::Ok,
+                Json(InitResponse {
+                    status: "success".to_string(),
+                }),
+            )
+        }
+        Ok(false) => {
+            warn!("Failed to initialize already initialized user {}", &alias);
+            status::Custom(
+                Status::Conflict,
+                Json(InitResponse {
+                    status: "existing".to_string(),
+                }),
+            )
+        }
         Err(e) => {
             error!("Failed to initialize user: {:?}", e);
             status::Custom(
