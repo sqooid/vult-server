@@ -21,8 +21,8 @@ pub fn user_initial_upload(
     data: Json<Vec<Credential>>,
 ) -> status::Custom<Json<InitUploadResponse>> {
     let User(alias) = user;
-    if let Ok(store_empty) = db.store().is_empty(&alias) {
-        if let Ok(cache_empty) = db.cache().is_empty(&alias) {
+    if let Ok(store_empty) = db.store.is_empty(&alias) {
+        if let Ok(cache_empty) = db.cache.is_empty(&alias) {
             if !store_empty || !cache_empty {
                 status::Custom(
                     Status::Conflict,
@@ -32,9 +32,9 @@ pub fn user_initial_upload(
                     }),
                 )
             } else {
-                match db.store().import_all(&alias, &data) {
+                match db.store.import_all(&alias, &data) {
                     Ok(_) => {
-                        if let Ok(state_id) = db.cache().add_mutations(&alias, &[]) {
+                        if let Ok(state_id) = db.cache.add_mutations(&alias, &[]) {
                             status::Custom(
                                 Status::Ok,
                                 Json(InitUploadResponse {

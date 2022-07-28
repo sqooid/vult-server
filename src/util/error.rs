@@ -7,6 +7,8 @@ pub enum Error {
     MissingId(String),
     #[error("User with alias {0} already exists")]
     ExistingUser(String),
+    #[error("User with alias {0} has not been initialized")]
+    UninitializedUser(String),
     #[error("Internal server error")]
     Server(#[source] anyhow::Error),
     #[error("Invalid server configuration")]

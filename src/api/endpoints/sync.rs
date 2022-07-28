@@ -72,8 +72,8 @@ fn sync_aux(
     let mut response = SyncResponse::default();
 
     // Applying mutations
-    data.mutations.retain_mut(
-        |mutation| match db.store().apply_mutation(alias, mutation) {
+    data.mutations
+        .retain_mut(|mutation| match db.store.apply_mutation(alias, mutation) {
             Ok(None) => true,
             Ok(Some(id)) => {
                 if let Mutation::Add { credential } = mutation {
@@ -97,19 +97,18 @@ fn sync_aux(
                 };
                 false
             }
-        },
-    );
+        });
 
     // Check state
     let state_exists = db
-        .cache()
+        .cache
         .has_state(alias, &data.state)
         .context(format!("Failed to check user state for user {}", alias))?;
     // Return whole store
     if !state_exists {
         info!("State id not found, exporting entire store");
         let store = db
-            .store()
+            .store
             .export_all(alias)
             .with_context(|| format!("Failed to export store for user {}", alias))?;
         info!("Exported store for user {}", &alias);
@@ -117,7 +116,7 @@ fn sync_aux(
     } else {
         info!("State id found, getting remote mutations");
         let mut remote_mutations = db
-            .cache()
+            .cache
             .get_next_mutations(alias, &data.state)
             .with_context(|| format!("Failed to get next mutations for user {}", alias))?;
         // Just apply and return state if most recent
@@ -155,7 +154,7 @@ fn sync_aux(
         }
     }
     let state_id = db
-        .cache()
+        .cache
         .add_mutations(alias, &data.mutations)
         .with_context(|| format!("Failed to add mutations for user {}", alias))?;
     response.state_id = state_id;

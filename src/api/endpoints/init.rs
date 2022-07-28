@@ -1,17 +1,69 @@
-use rocket::{http::Status, State};
-
+use crate::util::error::Error;
 use crate::{api::guards::user::User, database::traits::Databases};
+use anyhow::Result;
+use log::error;
+use rocket::response::status;
+use rocket::serde::json::Json;
+use rocket::{http::Status, State};
+use serde::{Deserialize, Serialize};
 
-#[get("/init")]
-pub fn check_user_state(user: User, db: &State<Databases>) -> Status {
+#[derive(Debug, Deserialize, Serialize)]
+pub struct InitRequest {
+    pub salt: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct InitResponse {
+    pub status: String,
+}
+
+#[get("/user/init", data = "<data>")]
+pub fn check_user_state(
+    user: User,
+    db: &State<Databases>,
+    data: Json<InitRequest>,
+) -> status::Custom<Json<InitResponse>> {
     let User(alias) = user;
-    if let Ok(empty) = db.cache().is_empty(&alias) {
-        match empty {
-            true => Status::Ok,
-            _ => Status::Conflict,
+    let result = add_salt_aux(db, &alias, &data.salt);
+    match result {
+        Ok(true) => status::Custom(
+            Status::Ok,
+            Json(InitResponse {
+                status: "success".to_string(),
+            }),
+        ),
+        Ok(false) => status::Custom(
+            Status::Conflict,
+            Json(InitResponse {
+                status: "existing".to_string(),
+            }),
+        ),
+        Err(e) => {
+            error!("Failed to initialize user: {:?}", e);
+            status::Custom(
+                Status::InternalServerError,
+                Json(InitResponse {
+                    status: "failed".to_string(),
+                }),
+            )
         }
-    } else {
-        Status::BadRequest
+    }
+}
+
+fn add_salt_aux(db: &State<Databases>, alias: &str, salt: &str) -> Result<bool> {
+    let result = db.salt.get_salt(&alias);
+    match result {
+        Ok(_) => Ok(false),
+        Err(e) => {
+            let e = e.downcast::<Error>()?;
+            match e {
+                Error::UninitializedUser(_) => {
+                    db.salt.set_salt(alias, salt)?;
+                    Ok(true)
+                }
+                _ => Err(e.into()),
+            }
+        }
     }
 }
 
@@ -23,6 +75,7 @@ mod test {
         http::{Header, Status},
         local::blocking::Client,
     };
+    use serde_json::json;
 
     use crate::{
         api::{db_types::Mutation, server::build_server},
@@ -71,25 +124,29 @@ mod test {
         let response = client
             .get(uri!(super::check_user_state))
             .header(Header::new("Authentication", "unit"))
+            .body(json!({"salt": "somesalt"}).to_string())
             .dispatch();
         assert_eq!(response.status(), Status::Ok);
+        let body = response.into_string().unwrap();
+        assert_eq!(body, json!({"status": "success"}).to_string())
     }
 
     #[test]
     fn taken() {
         let config = init_test_config("test/init/taken");
         let client = Client::tracked(build_server(config)).expect("Valid rocket instance");
-        let db = client
-            .rocket()
-            .state::<Databases>()
-            .expect("State databases");
-        db.cache()
-            .add_mutations("unit", &[Mutation::Delete { id: "blah".into() }])
-            .unwrap();
+        let _initial_response = client
+            .get(uri!(super::check_user_state))
+            .header(Header::new("Authentication", "unit"))
+            .body(json!({"salt": "somesalt"}).to_string())
+            .dispatch();
         let response = client
             .get(uri!(super::check_user_state))
             .header(Header::new("Authentication", "unit"))
+            .body(json!({"salt": "somesalt"}).to_string())
             .dispatch();
         assert_eq!(response.status(), Status::Conflict);
+        let body = response.into_string().unwrap();
+        assert_eq!(body, json!({"status": "existing"}).to_string());
     }
 }

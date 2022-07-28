@@ -9,7 +9,7 @@ use crate::util::error::Error;
 use crate::util::id::random_b64;
 use crate::util::types::GenericResult;
 
-use super::traits::{CacheDatabase, StoreDatabase};
+use super::traits::{CacheDatabase, SaltDatabase, StoreDatabase};
 
 pub struct SqliteDatabase {
     directory: PathBuf,
@@ -49,6 +49,15 @@ impl SqliteDatabase {
         let db = self.open_db(alias)?;
         db.execute(
             "create table if not exists Cache (id text primary key, time integer, mutation blob)",
+            [],
+        )?;
+        Ok(db)
+    }
+
+    fn open_salt(&self) -> GenericResult<rusqlite::Connection> {
+        let db = self.open_db("vult.internal.sqlite")?;
+        db.execute(
+            "create table if not exists Salt (alias text primary key, salt text)",
             [],
         )?;
         Ok(db)
@@ -262,6 +271,30 @@ impl CacheDatabase for SqliteDatabase {
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
             Ok(_) => Ok(true),
             Err(e) => Err(e.into()),
+        }
+    }
+}
+
+impl SaltDatabase for SqliteDatabase {
+    fn set_salt(&self, alias: &str, salt: &str) -> Result<()> {
+        let db = self.open_salt()?;
+        db.execute("insert into Salt values (?, ?)", [alias, salt])
+            .context("Failed to insert salt into database")?;
+        Ok(())
+    }
+
+    fn get_salt(&self, alias: &str) -> Result<String> {
+        let db = self.open_salt()?;
+        let mut statement = db.prepare("select salt from Salt where alias = ?")?;
+        match statement.query_row([alias], |row| {
+            let salt: String = row.get(0)?;
+            Ok(salt)
+        }) {
+            Ok(salt) => Ok(salt),
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                Err(Error::UninitializedUser(alias.to_string()).into())
+            }
+            Err(e) => Err(Error::Server(e.into()).into()),
         }
     }
 }
