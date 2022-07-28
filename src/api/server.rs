@@ -5,7 +5,9 @@ use crate::{
     database::{sqlite::SqliteDatabase, traits::Databases},
 };
 
-use super::endpoints::{init::initialize_user, init_upload::user_initial_upload, sync::sync_user};
+use super::endpoints::{
+    init::initialize_user, init_import::get_user, init_upload::user_initial_upload, sync::sync_user,
+};
 
 pub fn build_server(config: Config) -> Rocket<Build> {
     let sqlite_store = SqliteDatabase::new(&config.db_directory);
@@ -20,7 +22,7 @@ pub fn build_server(config: Config) -> Rocket<Build> {
         .manage(config)
         .mount(
             "/",
-            routes![initialize_user, user_initial_upload, sync_user],
+            routes![initialize_user, user_initial_upload, sync_user, get_user],
         )
 }
 
