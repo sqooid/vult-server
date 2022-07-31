@@ -18,7 +18,7 @@ pub enum Mutation {
     #[serde(rename = "add")]
     Add { credential: Credential },
     #[serde(rename = "delete")]
-    Delete { id: String },
+    Delete { credential: Credential },
     #[serde(rename = "modify")]
     Modify { credential: Credential },
 }
@@ -39,7 +39,7 @@ impl Display for Mutation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Mutation::Add { credential } => write!(f, "Add\n{}", credential),
-            Mutation::Delete { id } => write!(f, "Delete\n{}", id),
+            Mutation::Delete { credential } => write!(f, "Delete\n{}", credential.id),
             Mutation::Modify { credential } => write!(f, "Modify\n{}", credential),
         }
     }

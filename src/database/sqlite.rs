@@ -112,14 +112,14 @@ impl StoreDatabase for SqliteDatabase {
                 }
             }
 
-            Mutation::Delete { id } => {
-                let result = db.execute("delete from Store where id = ?", [id]);
+            Mutation::Delete { credential } => {
+                let result = db.execute("delete from Store where id = ?", [&credential.id]);
                 match result {
                     Ok(1) => Ok(None),
-                    Ok(_) => Err(Error::MissingId(id.to_owned()).into()),
+                    Ok(_) => Err(Error::MissingId(credential.id.to_owned()).into()),
                     Err(_) => {
                         result.with_context(|| {
-                            format!("Failed to delete credential with id {}", id)
+                            format!("Failed to delete credential with id {}", credential.id)
                         })?;
                         unreachable!()
                     }

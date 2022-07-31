@@ -129,7 +129,7 @@ fn sync_aux(
             data.mutations.retain(|m| {
                 overriden_ids.insert(match m {
                     Mutation::Add { credential } => credential.id.to_owned(),
-                    Mutation::Delete { id } => id.to_owned(),
+                    Mutation::Delete { credential } => credential.id.to_owned(),
                     Mutation::Modify { credential } => credential.id.to_owned(),
                 })
             });
@@ -145,7 +145,7 @@ fn sync_aux(
                     }
                     },
                     Mutation::Modify { credential } => !overriden_ids.contains(&credential.id as &str),
-                    Mutation::Delete { id } => !overriden_ids.contains(id as &str)
+                    Mutation::Delete { credential } => !overriden_ids.contains(&credential.id as &str)
                 });
 
             response.mutations = Some(remote_mutations);
@@ -504,7 +504,10 @@ mod test {
                         },
                         {
                             "type": "delete",
-                            "id": "missing"
+                            "credential": {
+                                "id": "missing",
+                                "value": ""
+                            }
                         }
                     ]
                 })

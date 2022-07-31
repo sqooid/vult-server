@@ -40,19 +40,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Test => {
             info!("Testing stuff");
-            let db = SqliteDatabase::new("data");
-            println!("{}", db.has_state("test", "1234").unwrap());
-            let state = db
-                .add_mutations(
-                    "test",
-                    &[
-                        Mutation::Delete { id: "1234".into() },
-                        Mutation::Delete { id: "blah".into() },
-                    ],
-                )
-                .unwrap();
-            println!("{}", db.has_state("test", &state).unwrap());
-            println!("{:?}", db.get_next_mutations("test", "0").unwrap());
         }
     }
 
