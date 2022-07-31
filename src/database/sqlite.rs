@@ -235,7 +235,7 @@ impl CacheDatabase for SqliteDatabase {
 
         let db = self.open_cache(alias)?;
         let mut statement = db.prepare(
-            "select mutation from Cache where time > (select time from Cache where id = ?)",
+            "select mutation from Cache where time > (select time from Cache where id = ?) order by time desc",
         )?;
         let mutation_blob_iter = statement.query_map([id], |row| {
             let mutation: Vec<u8> = row.get(0)?;

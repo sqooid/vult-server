@@ -137,15 +137,15 @@ fn sync_aux(
             // Filter out remote mutations for return
             remote_mutations.retain(|m| match m {
                     Mutation::Add { credential } => {
-                        if overriden_ids.contains(&credential.id as &str) {
+                        if overriden_ids.insert(credential.id.to_owned()) {
                             warn!("Impossible state: credential modified/deleted locally without knowing about remote credential with same id");
+                            true
+                        } else {
                             false
-                    } else {
-                        true
-                    }
+                        }
                     },
-                    Mutation::Modify { credential } => !overriden_ids.contains(&credential.id as &str),
-                    Mutation::Delete { credential } => !overriden_ids.contains(&credential.id as &str)
+                    Mutation::Modify { credential } => overriden_ids.insert(credential.id.to_owned()),
+                    Mutation::Delete { credential } => overriden_ids.insert(credential.id.to_owned())
                 });
 
             response.mutations = Some(remote_mutations);
