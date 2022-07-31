@@ -217,7 +217,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": init_state_id,
+                    "state_id": init_state_id,
                     "mutations": [
                         {
                             "type": "add",
@@ -256,7 +256,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": init_state_id,
+                    "state_id": init_state_id,
                     "mutations": [
                         {
                             "type": "add",
@@ -276,7 +276,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": first_body.state_id,
+                    "state_id": first_body.state_id,
                     "mutations": [
                         {
                             "type": "add",
@@ -313,7 +313,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": &init_state_id,
+                    "state_id": &init_state_id,
                     "mutations": [
                         {
                             "type": "add",
@@ -331,7 +331,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": &init_state_id,
+                    "state_id": &init_state_id,
                     "mutations": [
                         {
                             "type": "add",
@@ -384,7 +384,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": "asdfasdf",
+                    "state_id": "asdfasdf",
                     "mutations": [
                         {
                             "type": "add",
@@ -444,7 +444,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": &init_state_id,
+                    "state_id": &init_state_id,
                     "mutations": [
                         {
                             "type": "add",
@@ -492,7 +492,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": &init_state_id,
+                    "state_id": &init_state_id,
                     "mutations": [
                         {
                             "type": "modify",
@@ -544,7 +544,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": &init_state_id,
+                    "state_id": &init_state_id,
                     "mutations": [
                         {
                             "type": "add",
@@ -563,7 +563,7 @@ mod test {
             .header(auth_header())
             .body(
                 json!({
-                    "state": &init_state_id,
+                    "state_id": &init_state_id,
                     "mutations": [
                         {
                             "type": "modify",
