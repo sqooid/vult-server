@@ -16,14 +16,14 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 pub struct SyncRequest {
-    pub state: String,
+    pub state_id: String,
     pub mutations: Vec<Mutation>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct SyncResponse {
     pub status: String,
-    pub state_id: String,
+    pub state_id: Option<String>,
     pub mutations: Option<Vec<Mutation>>,
     pub store: Option<Vec<Credential>>,
     pub id_changes: Option<Vec<(String, String)>>,
@@ -102,7 +102,7 @@ fn sync_aux(
     // Check state
     let state_exists = db
         .cache
-        .has_state(alias, &data.state)
+        .has_state(alias, &data.state_id)
         .context(format!("Failed to check user state for user {}", alias))?;
     // Return whole store
     if !state_exists {
@@ -117,7 +117,7 @@ fn sync_aux(
         info!("State id found, getting remote mutations");
         let mut remote_mutations = db
             .cache
-            .get_next_mutations(alias, &data.state)
+            .get_next_mutations(alias, &data.state_id)
             .with_context(|| format!("Failed to get next mutations for user {}", alias))?;
         // Just apply and return state if most recent
         if !remote_mutations.is_empty() {
@@ -157,7 +157,7 @@ fn sync_aux(
         .cache
         .add_mutations(alias, &data.mutations)
         .with_context(|| format!("Failed to add mutations for user {}", alias))?;
-    response.state_id = state_id;
+    response.state_id = Some(state_id);
     response.status = "success".into();
 
     Ok(response)
@@ -233,7 +233,7 @@ mod test {
         let body_str = &response.into_string().unwrap();
         println!("{}", &body_str);
         let body: SyncResponse = serde_json::from_str(body_str).unwrap();
-        assert!(!body.state_id.is_empty());
+        assert!(!body.state_id.unwrap().is_empty());
         assert!(body.mutations.is_none());
         assert!(body.store.is_none());
         assert!(body.id_changes.is_none());
@@ -290,7 +290,7 @@ mod test {
             )
             .dispatch();
         let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
-        assert!(!body.state_id.is_empty());
+        assert!(!body.state_id.unwrap().is_empty());
         assert!(body.mutations.is_none());
         assert!(body.store.is_none());
         assert!(body.id_changes.is_none());
@@ -346,7 +346,7 @@ mod test {
             .dispatch();
         let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
         println!("{:?}", &body);
-        assert!(!body.state_id.is_empty());
+        assert!(!body.state_id.unwrap().is_empty());
         assert_eq!(
             body.mutations,
             Some(vec![Mutation::Add {
@@ -401,7 +401,7 @@ mod test {
             .dispatch();
         let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
         println!("{:?}", &body);
-        assert!(!body.state_id.is_empty());
+        assert!(!body.state_id.unwrap().is_empty());
         assert!(body.mutations.is_none());
         assert_eq!(
             body.store,
@@ -461,7 +461,7 @@ mod test {
             .dispatch();
         let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
         println!("{:?}", &body);
-        assert!(!body.state_id.is_empty());
+        assert!(!body.state_id.unwrap().is_empty());
         assert!(body.mutations.is_none());
         assert!(body.store.is_none());
         assert!(body.id_changes.unwrap().len() == 1);
@@ -513,7 +513,7 @@ mod test {
             .dispatch();
         let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
         println!("{:?}", &body);
-        assert!(!body.state_id.is_empty());
+        assert!(!body.state_id.unwrap().is_empty());
         assert!(body.mutations.is_none());
         assert!(body.store.is_none());
         assert!(body.id_changes.is_none());
@@ -580,7 +580,7 @@ mod test {
             .dispatch();
         let body: SyncResponse = serde_json::from_str(&response.into_string().unwrap()).unwrap();
         println!("{:?}", &body);
-        assert!(!body.state_id.is_empty());
+        assert!(!body.state_id.unwrap().is_empty());
         assert!(body.mutations.is_none());
         assert!(body.store.is_none());
         assert!(body.id_changes.is_none());
