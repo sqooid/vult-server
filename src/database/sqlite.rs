@@ -55,7 +55,7 @@ impl SqliteDatabase {
     }
 
     fn open_salt(&self) -> GenericResult<rusqlite::Connection> {
-        let db = self.open_db("vult.internal.sqlite")?;
+        let db = self.open_db("vult.internal")?;
         db.execute(
             "create table if not exists Salt (alias text primary key, salt text)",
             [],
