@@ -378,7 +378,7 @@ mod test {
                 .to_string(),
             )
             .dispatch();
-        let init_body: InitUploadResponse =
+        let _init_body: InitUploadResponse =
             serde_json::from_str(&_init.into_string().unwrap()).unwrap();
         let response = client
             .post(uri!(super::sync_user))

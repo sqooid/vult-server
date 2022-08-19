@@ -62,13 +62,13 @@ fn import(
     db: &State<Databases>,
     data: Json<Vec<Credential>>,
 ) -> Result<Option<String>> {
-    let store_empty = db.store.is_empty(&alias)?;
-    let cache_empty = db.cache.is_empty(&alias)?;
+    let store_empty = db.store.is_empty(alias)?;
+    let cache_empty = db.cache.is_empty(alias)?;
     if !store_empty || !cache_empty {
         Ok(None)
     } else {
-        db.store.import_all(&alias, &data)?;
-        let state_id = db.cache.add_mutations(&alias, &[])?;
+        db.store.import_all(alias, &data)?;
+        let state_id = db.cache.add_mutations(alias, &[])?;
         Ok(Some(state_id))
     }
 }

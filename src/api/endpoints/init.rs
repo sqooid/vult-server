@@ -57,7 +57,7 @@ pub fn initialize_user(
 }
 
 fn add_salt_aux(db: &State<Databases>, alias: &str, salt: &str) -> Result<bool> {
-    let result = db.salt.get_salt(&alias);
+    let result = db.salt.get_salt(alias);
     match result {
         Ok(_) => Ok(false),
         Err(e) => {
@@ -84,9 +84,8 @@ mod test {
     use serde_json::json;
 
     use crate::{
-        api::{db_types::Mutation, server::build_server},
+        api::server::build_server,
         config::parse_config::{Config, User},
-        database::traits::Databases,
     };
 
     fn init_test_config(dir: &str) -> Config {
