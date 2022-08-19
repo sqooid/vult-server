@@ -297,4 +297,11 @@ impl SaltDatabase for SqliteDatabase {
             Err(e) => Err(Error::Server(e.into()).into()),
         }
     }
+
+    fn remove_salt(&self, alias: &str) -> Result<()> {
+        let db = self.open_salt()?;
+        db.execute("delete from Salt where alias = ?", [alias])
+            .context("Failed to delete salt")
+            .map(|_| ())
+    }
 }

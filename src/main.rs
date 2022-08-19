@@ -14,9 +14,6 @@ use config::{
 };
 use log::info;
 
-use crate::database::traits::CacheDatabase;
-use crate::{api::db_types::Mutation, database::sqlite::SqliteDatabase};
-
 #[rocket::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli_config = Cli::parse();
@@ -31,11 +28,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    let config = Config::read_config(&cli_config.config)?;
+    let mut config = Config::read_config(&cli_config.config)?;
     info!("Parsed config:\n{}", &config);
 
     match cli_config.command {
-        Commands::Run => {
+        Commands::Run { test } => {
+            config.enable_test_routes = test;
             launch_server(config).await?;
         }
         Commands::Test => {

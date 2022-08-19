@@ -3,7 +3,7 @@ use std::{fmt::Display, fs::File, io::Read, path::Path};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::util::{error::Error};
+use crate::util::error::Error;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
@@ -12,6 +12,8 @@ pub struct Config {
     pub cache_count: u32,
     #[serde(default = "default_db_directory")]
     pub db_directory: String,
+    #[serde(skip)]
+    pub enable_test_routes: bool,
 }
 
 impl Display for Config {

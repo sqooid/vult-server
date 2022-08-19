@@ -19,7 +19,12 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Run the server
-    Run,
-    /// Testing
+    Run {
+        /// Enable test routes
+        #[clap(short, long)]
+        test: bool,
+    },
+
+    /// Run test functions
     Test,
 }

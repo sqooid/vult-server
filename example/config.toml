@@ -1,5 +1,5 @@
 cache_count = 100
 
 [[users]]
-alias = "main"
-keys = ["test"]
+alias = "androidtest"
+keys = ["androidtest"]

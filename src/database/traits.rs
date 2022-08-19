@@ -42,6 +42,7 @@ pub trait CacheDatabase {
 pub trait SaltDatabase {
     fn set_salt(&self, alias: &str, salt: &str) -> Result<()>;
     fn get_salt(&self, alias: &str) -> Result<String>;
+    fn remove_salt(&self, alias: &str) -> Result<()>;
 }
 
 pub struct Databases {

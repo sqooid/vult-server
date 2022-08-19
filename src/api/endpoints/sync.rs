@@ -193,6 +193,7 @@ mod test {
             }],
             cache_count: 50,
             db_directory: dir.into(),
+            enable_test_routes: false,
         }
     }
 
