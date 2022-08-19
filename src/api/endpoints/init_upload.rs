@@ -1,3 +1,4 @@
+use anyhow::Result;
 use rocket::response::status;
 use rocket::serde::json::Json;
 use rocket::{http::Status, State};
@@ -21,47 +22,29 @@ pub fn user_initial_upload(
     data: Json<Vec<Credential>>,
 ) -> status::Custom<Json<InitUploadResponse>> {
     let User(alias) = user;
-    if let Ok(store_empty) = db.store.is_empty(&alias) {
-        if let Ok(cache_empty) = db.cache.is_empty(&alias) {
-            if !store_empty || !cache_empty {
-                status::Custom(
-                    Status::Conflict,
-                    Json(InitUploadResponse {
-                        state_id: None,
-                        status: "existing".to_string(),
-                    }),
-                )
-            } else {
-                match db.store.import_all(&alias, &data) {
-                    Ok(_) => {
-                        if let Ok(state_id) = db.cache.add_mutations(&alias, &[]) {
-                            status::Custom(
-                                Status::Ok,
-                                Json(InitUploadResponse {
-                                    state_id: Some(state_id),
-                                    status: "success".to_string(),
-                                }),
-                            )
-                        } else {
-                            status::Custom(
-                                Status::InternalServerError,
-                                Json(InitUploadResponse {
-                                    state_id: None,
-                                    status: "failed".to_string(),
-                                }),
-                            )
-                        }
-                    }
-                    Err(_) => status::Custom(
-                        Status::InternalServerError,
-                        Json(InitUploadResponse {
-                            state_id: None,
-                            status: "failed".to_string(),
-                        }),
-                    ),
-                }
-            }
-        } else {
+    match import(&alias, db, data) {
+        Ok(None) => {
+            error!(
+                "Conflict on initial import for user {}: user data already exists",
+                &alias
+            );
+            status::Custom(
+                Status::Conflict,
+                Json(InitUploadResponse {
+                    state_id: None,
+                    status: "existing".to_string(),
+                }),
+            )
+        }
+        Ok(Some(state_id)) => status::Custom(
+            Status::Ok,
+            Json(InitUploadResponse {
+                state_id: Some(state_id),
+                status: "success".to_string(),
+            }),
+        ),
+        Err(_) => {
+            error!("Failed to do initial import for user {}", &alias);
             status::Custom(
                 Status::InternalServerError,
                 Json(InitUploadResponse {
@@ -70,14 +53,23 @@ pub fn user_initial_upload(
                 }),
             )
         }
+    }
+}
+
+/// True if successful, false if conflict
+fn import(
+    alias: &str,
+    db: &State<Databases>,
+    data: Json<Vec<Credential>>,
+) -> Result<Option<String>> {
+    let store_empty = db.store.is_empty(&alias)?;
+    let cache_empty = db.cache.is_empty(&alias)?;
+    if !store_empty || !cache_empty {
+        Ok(None)
     } else {
-        status::Custom(
-            Status::InternalServerError,
-            Json(InitUploadResponse {
-                state_id: None,
-                status: "failed".to_string(),
-            }),
-        )
+        db.store.import_all(&alias, &data)?;
+        let state_id = db.cache.add_mutations(&alias, &[])?;
+        Ok(Some(state_id))
     }
 }
 
