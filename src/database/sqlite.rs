@@ -9,7 +9,7 @@ use crate::util::error::Error;
 use crate::util::id::random_b64;
 use crate::util::types::GenericResult;
 
-use super::traits::{CacheDatabase, SaltDatabase, StoreDatabase};
+use super::traits::{CacheDatabase, StoreDatabase, UserDatabase};
 
 pub struct SqliteDatabase {
     directory: PathBuf,
@@ -54,10 +54,10 @@ impl SqliteDatabase {
         Ok(db)
     }
 
-    fn open_salt(&self) -> GenericResult<rusqlite::Connection> {
+    fn open_user(&self) -> GenericResult<rusqlite::Connection> {
         let db = self.open_db("vult.internal")?;
         db.execute(
-            "create table if not exists Salt (alias text primary key, salt text)",
+            "create table if not exists User (alias text primary key, salt text, hash text)",
             [],
         )?;
         Ok(db)
@@ -275,22 +275,23 @@ impl CacheDatabase for SqliteDatabase {
     }
 }
 
-impl SaltDatabase for SqliteDatabase {
-    fn set_salt(&self, alias: &str, salt: &str) -> Result<()> {
-        let db = self.open_salt()?;
-        db.execute("insert into Salt values (?, ?)", [alias, salt])
+impl UserDatabase for SqliteDatabase {
+    fn add_user(&self, alias: &str, salt: &str, hash: &str) -> Result<()> {
+        let db = self.open_user()?;
+        db.execute("insert into User values (?, ?, ?)", [alias, salt, hash])
             .context("Failed to insert salt into database")?;
         Ok(())
     }
 
-    fn get_salt(&self, alias: &str) -> Result<String> {
-        let db = self.open_salt()?;
-        let mut statement = db.prepare("select salt from Salt where alias = ?")?;
+    fn get_user(&self, alias: &str) -> Result<(String, String)> {
+        let db = self.open_user()?;
+        let mut statement = db.prepare("select salt, hash from User where alias = ?")?;
         match statement.query_row([alias], |row| {
             let salt: String = row.get(0)?;
-            Ok(salt)
+            let hash: String = row.get(1)?;
+            Ok((salt, hash))
         }) {
-            Ok(salt) => Ok(salt),
+            Ok(value) => Ok(value),
             Err(rusqlite::Error::QueryReturnedNoRows) => {
                 Err(Error::UninitializedUser(alias.to_string()).into())
             }
@@ -299,7 +300,7 @@ impl SaltDatabase for SqliteDatabase {
     }
 
     fn remove_salt(&self, alias: &str) -> Result<()> {
-        let db = self.open_salt()?;
+        let db = self.open_user()?;
         db.execute("delete from Salt where alias = ?", [alias])
             .context("Failed to delete salt")
             .map(|_| ())

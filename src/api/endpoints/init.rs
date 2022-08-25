@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InitRequest {
     pub salt: String,
+    pub hash: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -24,7 +25,7 @@ pub fn initialize_user(
     data: Json<InitRequest>,
 ) -> status::Custom<Json<InitResponse>> {
     let User(alias) = user;
-    let result = add_salt_aux(db, &alias, &data.salt);
+    let result = add_salt_aux(db, &alias, &data.salt, &data.hash);
     match result {
         Ok(true) => {
             info!("Initialized user {}", &alias);
@@ -56,15 +57,15 @@ pub fn initialize_user(
     }
 }
 
-fn add_salt_aux(db: &State<Databases>, alias: &str, salt: &str) -> Result<bool> {
-    let result = db.salt.get_salt(alias);
+fn add_salt_aux(db: &State<Databases>, alias: &str, salt: &str, hash: &str) -> Result<bool> {
+    let result = db.salt.get_user(alias);
     match result {
         Ok(_) => Ok(false),
         Err(e) => {
             let e = e.downcast::<Error>()?;
             match e {
                 Error::UninitializedUser(_) => {
-                    db.salt.set_salt(alias, salt)?;
+                    db.salt.add_user(alias, salt, hash)?;
                     Ok(true)
                 }
                 _ => Err(e.into()),
@@ -130,7 +131,7 @@ mod test {
         let response = client
             .post(uri!(super::initialize_user))
             .header(Header::new("Authentication", "unit"))
-            .body(json!({"salt": "somesalt"}).to_string())
+            .body(json!({"salt": "somesalt", "hash": "somehash"}).to_string())
             .dispatch();
         assert_eq!(response.status(), Status::Ok);
         let body = response.into_string().unwrap();
@@ -144,12 +145,12 @@ mod test {
         let _initial_response = client
             .post(uri!(super::initialize_user))
             .header(Header::new("Authentication", "unit"))
-            .body(json!({"salt": "somesalt"}).to_string())
+            .body(json!({"salt": "somesalt", "hash": "somehash"}).to_string())
             .dispatch();
         let response = client
             .post(uri!(super::initialize_user))
             .header(Header::new("Authentication", "unit"))
-            .body(json!({"salt": "somesalt"}).to_string())
+            .body(json!({"salt": "somesalt", "hash": "somehash"}).to_string())
             .dispatch();
         assert_eq!(response.status(), Status::Conflict);
         let body = response.into_string().unwrap();

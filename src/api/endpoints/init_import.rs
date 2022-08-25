@@ -7,20 +7,22 @@ use serde::{Deserialize, Serialize};
 pub struct UserImportResponse {
     pub status: String,
     pub salt: Option<String>,
+    pub hash: Option<String>,
 }
 
 #[get("/user/import")]
 pub fn get_user(user: User, db: &State<Databases>) -> status::Custom<Json<UserImportResponse>> {
     let User(alias) = user;
-    let result = db.salt.get_salt(&alias);
+    let result = db.salt.get_user(&alias);
     match result {
-        Ok(salt) => {
+        Ok(user) => {
             info!("Provided salt for user {}", &alias);
             status::Custom(
                 Status::Ok,
                 Json(UserImportResponse {
                     status: "success".into(),
-                    salt: Some(salt),
+                    salt: Some(user.0),
+                    hash: Some(user.1),
                 }),
             )
         }
@@ -30,6 +32,7 @@ pub fn get_user(user: User, db: &State<Databases>) -> status::Custom<Json<UserIm
                 Json(UserImportResponse {
                     status: "failed".into(),
                     salt: None,
+                    hash: None,
                 }),
             );
             if let Some(e) = e.downcast_ref::<Error>() {
@@ -41,6 +44,7 @@ pub fn get_user(user: User, db: &State<Databases>) -> status::Custom<Json<UserIm
                             Json(UserImportResponse {
                                 status: "uninitialized".into(),
                                 salt: None,
+                                hash: None,
                             }),
                         )
                     }
@@ -99,7 +103,7 @@ mod test {
         let _init = client
             .post("/user/init")
             .header(auth_header())
-            .body(json!({"salt":"somesalt"}).to_string())
+            .body(json!({"salt":"somesalt", "hash": "somehash"}).to_string())
             .dispatch();
         let response = client
             .get(uri!(super::get_user))
@@ -107,7 +111,10 @@ mod test {
             .dispatch();
         assert_eq!(response.status(), Status::Ok);
         let body: Value = response.into_json().unwrap();
-        assert_eq!(body, json!({"status":"success","salt":"somesalt"}));
+        assert_eq!(
+            body,
+            json!({"status":"success","salt":"somesalt", "hash": "somehash"})
+        );
     }
 
     #[test]
@@ -120,6 +127,9 @@ mod test {
             .dispatch();
         assert_eq!(response.status(), Status::Conflict);
         let body: Value = response.into_json().unwrap();
-        assert_eq!(body, json!({"status":"uninitialized","salt":null}));
+        assert_eq!(
+            body,
+            json!({"status":"uninitialized","salt":null,"hash":null})
+        );
     }
 }

@@ -39,23 +39,23 @@ pub trait CacheDatabase {
     /// Check if database is empty for user of 'key'
     fn is_empty(&self, alias: &str) -> GenericResult<bool>;
 }
-pub trait SaltDatabase {
-    fn set_salt(&self, alias: &str, salt: &str) -> Result<()>;
-    fn get_salt(&self, alias: &str) -> Result<String>;
+pub trait UserDatabase {
+    fn add_user(&self, alias: &str, salt: &str, hash: &str) -> Result<()>;
+    fn get_user(&self, alias: &str) -> Result<(String, String)>;
     fn remove_salt(&self, alias: &str) -> Result<()>;
 }
 
 pub struct Databases {
     pub store: Box<dyn StoreDatabase + Send + Sync>,
     pub cache: Box<dyn CacheDatabase + Send + Sync>,
-    pub salt: Box<dyn SaltDatabase + Send + Sync>,
+    pub salt: Box<dyn UserDatabase + Send + Sync>,
 }
 
 impl Databases {
     pub fn new(
         store: Box<dyn StoreDatabase + Send + Sync>,
         cache: Box<dyn CacheDatabase + Send + Sync>,
-        salt: Box<dyn SaltDatabase + Send + Sync>,
+        salt: Box<dyn UserDatabase + Send + Sync>,
     ) -> Self {
         Self { store, cache, salt }
     }

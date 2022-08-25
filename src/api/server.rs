@@ -14,12 +14,12 @@ pub fn build_server(config: Config) -> Rocket<Build> {
     let enable_test_routes = config.enable_test_routes.to_owned();
     let sqlite_store = SqliteDatabase::new(&config.db_directory);
     let sqlite_cache = SqliteDatabase::new(&config.db_directory);
-    let sqlite_salt = SqliteDatabase::new(&config.db_directory);
+    let sqlite_user = SqliteDatabase::new(&config.db_directory);
     rocket::build()
         .manage(Databases::new(
             Box::new(sqlite_store),
             Box::new(sqlite_cache),
-            Box::new(sqlite_salt),
+            Box::new(sqlite_user),
         ))
         .manage(config)
         .mount(
