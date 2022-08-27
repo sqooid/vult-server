@@ -71,6 +71,12 @@ fn sync_aux(
 ) -> Result<SyncResponse> {
     let mut response = SyncResponse::default();
 
+    if data.mutations.is_empty() && !data.state_id.is_empty() {
+        response.state_id = Some(data.state_id.to_string());
+        response.status = "success".to_string();
+        return Ok(response);
+    }
+
     // Applying mutations
     data.mutations
         .retain_mut(|mutation| match db.store.apply_mutation(alias, mutation) {

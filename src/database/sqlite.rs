@@ -301,7 +301,7 @@ impl UserDatabase for SqliteDatabase {
 
     fn remove_salt(&self, alias: &str) -> Result<()> {
         let db = self.open_user()?;
-        db.execute("delete from Salt where alias = ?", [alias])
+        db.execute("delete from User where alias = ?", [alias])
             .context("Failed to delete salt")
             .map(|_| ())
     }

@@ -25,6 +25,7 @@ pub fn initialize_user(
     data: Json<InitRequest>,
 ) -> status::Custom<Json<InitResponse>> {
     let User(alias) = user;
+    info!("{:?}", &data);
     let result = add_salt_aux(db, &alias, &data.salt, &data.hash);
     match result {
         Ok(true) => {
@@ -58,14 +59,14 @@ pub fn initialize_user(
 }
 
 fn add_salt_aux(db: &State<Databases>, alias: &str, salt: &str, hash: &str) -> Result<bool> {
-    let result = db.salt.get_user(alias);
+    let result = db.user.get_user(alias);
     match result {
         Ok(_) => Ok(false),
         Err(e) => {
             let e = e.downcast::<Error>()?;
             match e {
                 Error::UninitializedUser(_) => {
-                    db.salt.add_user(alias, salt, hash)?;
+                    db.user.add_user(alias, salt, hash)?;
                     Ok(true)
                 }
                 _ => Err(e.into()),

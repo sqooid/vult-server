@@ -18,7 +18,7 @@ pub fn reset_databases(user: User, config: &State<Config>, db: &State<Databases>
 }
 
 fn clear_database(alias: &str, db_directory: &str, db: &State<Databases>) -> Result<()> {
-    db.salt.remove_salt(alias)?;
+    db.user.remove_salt(alias)?;
     std::fs::remove_file(Path::new(db_directory).join(format!("{alias}.sqlite")))?;
     Ok(())
 }

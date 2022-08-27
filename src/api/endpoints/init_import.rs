@@ -13,7 +13,7 @@ pub struct UserImportResponse {
 #[get("/user/import")]
 pub fn get_user(user: User, db: &State<Databases>) -> status::Custom<Json<UserImportResponse>> {
     let User(alias) = user;
-    let result = db.salt.get_user(&alias);
+    let result = db.user.get_user(&alias);
     match result {
         Ok(user) => {
             info!("Provided salt for user {}", &alias);

@@ -48,15 +48,15 @@ pub trait UserDatabase {
 pub struct Databases {
     pub store: Box<dyn StoreDatabase + Send + Sync>,
     pub cache: Box<dyn CacheDatabase + Send + Sync>,
-    pub salt: Box<dyn UserDatabase + Send + Sync>,
+    pub user: Box<dyn UserDatabase + Send + Sync>,
 }
 
 impl Databases {
     pub fn new(
         store: Box<dyn StoreDatabase + Send + Sync>,
         cache: Box<dyn CacheDatabase + Send + Sync>,
-        salt: Box<dyn UserDatabase + Send + Sync>,
+        user: Box<dyn UserDatabase + Send + Sync>,
     ) -> Self {
-        Self { store, cache, salt }
+        Self { store, cache, user }
     }
 }
