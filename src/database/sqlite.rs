@@ -70,6 +70,7 @@ impl StoreDatabase for SqliteDatabase {
 
         match mutation {
             Mutation::Add { credential } => {
+                info!("Applying add {}", &credential.id);
                 let result = db.execute(
                     "insert into Store values (?, ?)",
                     [&credential.id, &credential.value],
@@ -113,6 +114,7 @@ impl StoreDatabase for SqliteDatabase {
             }
 
             Mutation::Delete { credential } => {
+                info!("Applying delete {}", &credential.id);
                 let result = db.execute("delete from Store where id = ?", [&credential.id]);
                 match result {
                     Ok(1) => Ok(None),
@@ -126,6 +128,7 @@ impl StoreDatabase for SqliteDatabase {
                 }
             }
             Mutation::Modify { credential } => {
+                info!("Applying modify {}", &credential.id);
                 let result = db.execute(
                     "update Store set value = ? where id = ?",
                     [&credential.value, &credential.id],

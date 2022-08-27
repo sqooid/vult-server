@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use anyhow::{Context, Result};
-use log::{error, info, warn};
+use log::{error, info, trace, warn};
 use rocket::{http::Status, response::status, serde::json::Json, State};
 use serde::{Deserialize, Serialize};
 
@@ -72,17 +72,20 @@ fn sync_aux(
     let mut response = SyncResponse::default();
 
     if data.mutations.is_empty() && !data.state_id.is_empty() {
+        info!("No new mutations");
         response.state_id = Some(data.state_id.to_string());
         response.status = "success".to_string();
         return Ok(response);
     }
 
     // Applying mutations
+    trace!("Applying mutations");
     data.mutations
         .retain_mut(|mutation| match db.store.apply_mutation(alias, mutation) {
             Ok(None) => true,
             Ok(Some(id)) => {
                 if let Mutation::Add { credential } = mutation {
+                    trace!("Replaced id {} with {}", &credential.id, &id);
                     response.add_id_change(&credential.id, &id);
                     credential.id = id;
                 }
@@ -106,10 +109,12 @@ fn sync_aux(
         });
 
     // Check state
+    trace!("Checking state");
     let state_exists = db
         .cache
         .has_state(alias, &data.state_id)
         .context(format!("Failed to check user state for user {}", alias))?;
+
     // Return whole store
     if !state_exists {
         info!("State id not found, exporting entire store");
